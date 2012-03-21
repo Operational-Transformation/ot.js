@@ -41,13 +41,105 @@ var operational_transformation = (function () {
       }
     }
     if (strIndex !== str.length) {
-      throw new Error("The operation didn't ");
+      throw new Error("The operation didn't operate on the whole string.");
     }
     return newStr.join('');
   }
 
   function compose (operation1, operation2) {
-    return null;
+    var operation = new Operation();
+    var ops1 = operation1.ops, ops2 = operation2.ops;
+    var i1 = 0, i2 = 0;
+    var op1 = ops1[i1++], op2 = ops2[i2++];
+    while (true) {
+      var op1l = op1.skip || (op1.insert || op1.delete).length;
+      var op2l = op2.skip || (op2.insert || op2.delete).length;
+      var minl = Math.min(op1l, op2l);
+      if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
+        break;
+      } else if (typeof op1 === 'undefined') {
+        if (!op2.insert) {
+          throw new Error("Successive operations can only insert new characters at the end of the string.");
+        }
+        operation.insert(op2.insert);
+        op2 = ops2[i2++];
+      } else if (typeof op2 === 'undefined') {
+        if (!op1.delete) {
+          throw new Error("The first operation can only delete at the end of operation 2.");
+        }
+        operation.delete(op1.delete);
+        op1 = ops1[i1++];
+      } else if (op1.skip && op2.skip) {
+        if (op1l > op2l) {
+          operation.skip(op2l);
+          op1 = { skip: op1l - op2l };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          operation.skip(op1l);
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          operation.skip(op1l);
+          op1 = ops1[i1++];
+          op2 = { skip: op2l - op1l };
+        }
+      } else if (op1.insert && op2.delete) {
+        if (op1.insert.slice(0, m) !== op2.delete.slice(0, m)) {
+          throw new Error("Successive operations must delete what has been inserted before.");
+        }
+        if (op1l > op2l) {
+          op1 = { insert: op1.insert.slice(op2l) };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          op1 = ops1[i1++];
+          op2 = { delete: op2.delete.slice(op1l) };
+        }
+      } else if (op1.insert && op2.skip) {
+        if (op1l > op2l) {
+          operation.insert(op1.insert.slice(0, op2l));
+          op1 = { insert: op1.insert.slice(op2l) };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          operation.insert(op1.insert);
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          operation.insert(op1.insert);
+          op1 =ops1[i1++];
+          op2 = { skip: op2l - op1l };
+        }
+      } else if (op1.skip && op2.delete) {
+        if (op1l > op2l) {
+          operation.delete(op2.delete);
+          op1 = { skip: op1l - op2l };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          operation.delete(op2.delete);
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          operation.delete(op2.delete.slice(0, op1l));
+          op1 = ops1[i1++];
+          op2 = { delete: op2.delete.slice(op1l) };
+        }
+      } else if (op1.delete) {
+        operation.delete(op1.delete);
+        op1 = ops1[i1++];
+      } else if (op2.insert) {
+        operation.insert(op2.insert);
+        op2 = ops2[i2++];
+      } else {
+        throw new Error(
+          "This shouldn't happen: op1: " +
+          JSON.stringify(op1) + ", op2: " +
+          JSON.stringify(op2)
+        );
+      }
+    }
+    return operation;
   }
 
   function transform (operation1, operation2) {
