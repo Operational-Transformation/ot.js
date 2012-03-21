@@ -20,7 +20,30 @@ var operational_transformation = (function () {
   };
 
   function apply (str, operation) {
-    return str;
+    var newStr = [], j = 0;
+    var strIndex = 0;
+    var ops = operation.ops;
+    for (var i = 0, l = ops.length; i < l; i++) {
+      var op = ops[i];
+      if (op.skip) {
+        if (strIndex + op.skip > str.length) {
+          throw new Error("Operation can't retain more characters than are left in the string.");
+        }
+        newStr[j++] = str.slice(strIndex, strIndex + op.skip);
+        strIndex += op.skip;
+      } else if (op.insert) {
+        newStr[j++] = op.insert;
+      } else { // delete op
+        if (op.delete !== str.slice(strIndex, strIndex + op.delete.length)) {
+          throw new Error("The deleted string and the next characters in the string don't match.");
+        }
+        strIndex += op.delete.length;
+      }
+    }
+    if (strIndex !== str.length) {
+      throw new Error("The operation didn't ");
+    }
+    return newStr.join('');
   }
 
   function compose (operation1, operation2) {
