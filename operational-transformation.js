@@ -84,7 +84,7 @@ var operational_transformation = (function () {
           op2 = { skip: op2l - op1l };
         }
       } else if (op1.insert && op2.delete) {
-        if (op1.insert.slice(0, m) !== op2.delete.slice(0, m)) {
+        if (op1.insert.slice(0, minl) !== op2.delete.slice(0, minl)) {
           throw new Error("Successive operations must delete what has been inserted before.");
         }
         if (op1l > op2l) {
@@ -143,7 +143,81 @@ var operational_transformation = (function () {
   }
 
   function transform (operation1, operation2) {
-    return null;
+    var operation1prime = new Operation();
+    var operation2prime = new Operation();
+    var ops1 = operation1.ops, op2 = operation2.ops;
+    var i1 = 0, i2 = 0;
+    var op1 = ops1[i1++], op2 = ops2[i2++];
+    while (true) {
+      var op1l = op1.skip || (op1.insert || op1.delete).length;
+      var op2l = op2.skip || (op2.insert || op2.delete).length;
+      var minl = Math.min(op1l, op2l);
+      if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
+        break;
+      } else if (op1.skip && op2.skip) {
+        operation1prime.skip(minl);
+        operation2prime.skip(minl);
+        if (op1l > op2l) {
+          op1 = { skip: op1l - op2l };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          op1 = ops1[i1++];
+          op2 = { skip: op2l - op1l };
+        }
+      } else if (op1.insert) {
+        operation1prime.insert(op1.insert);
+        operation2prime.skip(op1.insert.length);
+        op1 = ops1[i1++];
+      } else if (op2.insert) {
+        operation1prime.skip(op2.insert.length);
+        operation2prime.insert(op2.insert);
+        op2 = ops2[i2++];
+      } else if (op1.delete && op2.delete) {
+        if (op1.delete.slice(0, minl) !== op2.delete.slice(0, minl)) {
+          throw new Error("When two concurrent operations delete text at the same position, they must delete the same text");
+        }
+        if (op1l > op2l) {
+          op1 = { delete: op1.delete.slice(op2l) };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          op1 = ops1[i1++];
+          op2 = { delete: op2.delete.slice(op1l) };
+        }
+      } else if (op1.delete && op2.skip) {
+        operation1prime.delete(op1.delete.slice(minl));
+        if (op1l > op2l) {
+          op1 = { delete: op1.delete.slice(op2l) };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          op1 = ops1[i1++];
+          op2 = { skip: op2.skip - op1l };
+        }
+      } else if (op1.skip && op2.delete) {
+        operation2prime.delete(op2.delete.slice(minl));
+        if (op1l > op2l) {
+          op1 = { skip: op1.skip - op2l };
+          op2 = ops2[i2++];
+        } else if (op1l === op2l) {
+          op1 = ops1[i1++];
+          op2 = ops2[i2++];
+        } else {
+          op1 = ops1[i1++];
+          op2 = { delete: op2.delete.slice(op1l) };
+        }
+      } else {
+        throw new Error("The two operations aren't compatible");
+      }
+    }
+    return [operation1prime, operation2prime];
   }
 
   function assert (b) {
