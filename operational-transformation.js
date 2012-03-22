@@ -1,6 +1,8 @@
 var operational_transformation = (function () {
 
-  function Operation (ops) {
+  function Operation (baseRevision, ops) {
+    assert(typeof baseRevision === 'number' && baseRevision >= 0);
+    this.baseRevision = baseRevision;
     this.ops = ops || [];
     this.baseLength = 0;
     this.targetLength = 0;
@@ -56,7 +58,7 @@ var operational_transformation = (function () {
     if (operation1.targetLength !== operation2.baseLength) {
       throw new Error("The base length of the second operation has two be the target length of the first operation");
     }
-    var operation = new Operation();
+    var operation = new Operation(operation1.baseRevision);
     var ops1 = operation1.ops, ops2 = operation2.ops;
     var i1 = 0, i2 = 0;
     var op1 = ops1[i1++], op2 = ops2[i2++];
@@ -155,8 +157,11 @@ var operational_transformation = (function () {
     if (operation1.baseLength !== operation2.baseLength) {
       throw new Error("Both operations have to have the same base length");
     }
-    var operation1prime = new Operation();
-    var operation2prime = new Operation();
+    if (operation1.baseRevision !== operation2.baseRevision) {
+      throw new Error("Both operations have to have the same base revision");
+    }
+    var operation1prime = new Operation(operation2.baseRevision + 1);
+    var operation2prime = new Operation(operation1.baseRevision + 1);
     var ops1 = operation1.ops, op2 = operation2.ops;
     var i1 = 0, i2 = 0;
     var op1 = ops1[i1++], op2 = ops2[i2++];
