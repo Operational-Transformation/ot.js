@@ -2,20 +2,26 @@ var operational_transformation = (function () {
 
   function Operation (ops) {
     this.ops = ops || [];
+    this.baseLength = 0;
+    this.targetLength = 0;
   }
 
   Operation.prototype.skip = function (n) {
     assert(n > 0);
+    this.baseLength += n;
+    this.targetLength += n;
     this.ops.push({ skip: n });
   };
 
   Operation.prototype.insert = function (str) {
     assert(str);
+    this.targetLength += str.length;
     this.ops.push({ insert: str });
   };
 
   Operation.prototype.delete = function (str) {
     assert(str);
+    this.baseLength += str.length;
     this.ops.push({ delete: str });
   };
 
@@ -47,6 +53,9 @@ var operational_transformation = (function () {
   }
 
   function compose (operation1, operation2) {
+    if (operation1.targetLength !== operation2.baseLength) {
+      throw new Error("The base length of the second operation has two be the target length of the first operation");
+    }
     var operation = new Operation();
     var ops1 = operation1.ops, ops2 = operation2.ops;
     var i1 = 0, i2 = 0;
@@ -143,6 +152,9 @@ var operational_transformation = (function () {
   }
 
   function transform (operation1, operation2) {
+    if (operation1.baseLength !== operation2.baseLength) {
+      throw new Error("Both operations have to have the same base length");
+    }
     var operation1prime = new Operation();
     var operation2prime = new Operation();
     var ops1 = operation1.ops, op2 = operation2.ops;
