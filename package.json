@@ -1,0 +1,27 @@
+{
+  "name": "operational-transformation",
+  "description": "Collaborative editing using operational transformation",
+  "keywords": [
+    "operational transformation",
+    "ot"
+  ],
+  "version": "0.0.1",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/timjb/javascript-operational-transformation"
+  },
+  "bugs": {
+    "url": "https://github.com/timjb/javascript-operational-transformation/issues"
+  },
+  "main": "./lib/operational-transformation.js",
+  "dependencies": {},
+  "scripts": {
+    "test": "node ./test/operational-transformation.js"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/github.com/timjb/javascript-operational-transformation/raw/master/LICENSE"
+    }
+  ]
+}
