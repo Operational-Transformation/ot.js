@@ -1,0 +1,1 @@
+[![Build Status](https://secure.travis-ci.org/timjb/javascript-operational-transformation.png?branch=master)](http://travis-ci.org/timjb/javascript-operational-transformation)
