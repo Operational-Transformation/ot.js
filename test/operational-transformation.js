@@ -69,6 +69,30 @@ function testLengths () {
   assertEqual(10, o.targetLength);
 }
 
+function testOpsMerging () {
+  function last (arr) { return arr[arr.length-1]; }
+  var o = new ot.Operation(0);
+  assertEqual(0, o.ops.length);
+  o.skip(2);
+  assertEqual(1, o.ops.length);
+  assertEqual(2, last(o.ops).skip)
+  o.skip(3);
+  assertEqual(1, o.ops.length);
+  assertEqual(5, last(o.ops).skip)
+  o.insert("abc");
+  assertEqual(2, o.ops.length);
+  assertEqual("abc", last(o.ops).insert)
+  o.insert("xyz");
+  assertEqual(2, o.ops.length);
+  assertEqual("abcxyz", last(o.ops).insert)
+  o.delete("d");
+  assertEqual(3, o.ops.length);
+  assertEqual("d", last(o.ops).delete)
+  o.delete("d");
+  assertEqual(3, o.ops.length);
+  assertEqual("dd", last(o.ops).delete)
+}
+
 function testCompose () {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = randomString(20);
@@ -111,6 +135,7 @@ function testTransform () {
 function testAll () {
   var n = 500;
   testLengths();
+  testOpsMerging();
   times(n, testCompose);
   times(n, testTransform);
 }
