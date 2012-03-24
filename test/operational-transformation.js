@@ -24,7 +24,7 @@ function randomOperation (rev, str) {
     } else if (r < 0.4) {
       operation.delete(str.slice(operation.baseLength, operation.baseLength + l));
     } else {
-      operation.skip(l);
+      operation.retain(l);
     }
   }
   if (Math.random() < 0.3) {
@@ -55,13 +55,13 @@ function testLengths () {
   var o = new ot.Operation(0);
   assertEqual(0, o.baseLength);
   assertEqual(0, o.targetLength);
-  o.skip(5);
+  o.retain(5);
   assertEqual(5, o.baseLength);
   assertEqual(5, o.targetLength);
   o.insert("abc");
   assertEqual(5, o.baseLength);
   assertEqual(8, o.targetLength);
-  o.skip(2);
+  o.retain(2);
   assertEqual(7, o.baseLength);
   assertEqual(10, o.targetLength);
   o.delete("xy");
@@ -73,12 +73,12 @@ function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
   var o = new ot.Operation(0);
   assertEqual(0, o.ops.length);
-  o.skip(2);
+  o.retain(2);
   assertEqual(1, o.ops.length);
-  assertEqual(2, last(o.ops).skip)
-  o.skip(3);
+  assertEqual(2, last(o.ops).retain)
+  o.retain(3);
   assertEqual(1, o.ops.length);
-  assertEqual(5, last(o.ops).skip)
+  assertEqual(5, last(o.ops).retain)
   o.insert("abc");
   assertEqual(2, o.ops.length);
   assertEqual("abc", last(o.ops).insert)

@@ -8,7 +8,7 @@ function codeMirrorChangeToOperation (cm, change, oldValue) {
   var deletedChars = text.length - diff;
 
   if (from > 0) {
-    operation.skip(from);
+    operation.retain(from);
   }
   if (deletedChars > 0) {
     operation.delete(oldValue.slice(from, from + deletedChars));
@@ -17,7 +17,7 @@ function codeMirrorChangeToOperation (cm, change, oldValue) {
     operation.insert(text);
   }
   if (oldValue.length - operation.baseLength > 0) {
-    operation.skip(oldValue.length - operation.baseLength);
+    operation.retain(oldValue.length - operation.baseLength);
   }
 
   return operation;
