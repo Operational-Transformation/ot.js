@@ -93,6 +93,15 @@ function testOpsMerging () {
   assertEqual("dd", last(o.ops).delete)
 }
 
+function testToString () {
+  var o = new ot.Operation(0);
+  o.retain(2);
+  o.insert('lorem');
+  o.delete('ipsum');
+  o.retain(5);
+  assertEqual("retain 2, insert 'lorem', delete 'ipsum', retain 5", o.toString());
+}
+
 function testCompose () {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = randomString(20);
@@ -136,6 +145,7 @@ function testAll () {
   var n = 500;
   testLengths();
   testOpsMerging();
+  testToString();
   times(n, testCompose);
   times(n, testTransform);
 }
