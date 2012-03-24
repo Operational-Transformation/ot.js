@@ -141,13 +141,11 @@ function testTransform () {
   }
 }
 
-function testAll () {
+exports.run = function () {
   var n = 500;
   testLengths();
   testOpsMerging();
   testToString();
   times(n, testCompose);
   times(n, testTransform);
-}
-
-testAll();
+};

@@ -16,7 +16,7 @@
   "main": "./lib/operational-transformation.js",
   "dependencies": {},
   "scripts": {
-    "test": "node ./test/operational-transformation.js"
+    "test": "node ./test/run_tests.js"
   },
   "licenses": [
     {
