@@ -52,7 +52,7 @@
 
   var Client = ot_client.Client;
 
-  var socket = io.connect('http://localhost');
+  var socket = io.connect('/');
   socket.on('doc', function (obj) {
     initialize(obj.str, obj.revision);
   });
