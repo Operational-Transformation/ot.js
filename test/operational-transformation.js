@@ -51,6 +51,16 @@ function assertEqual (a, b) {
   }
 }
 
+function assertThrows (fn) {
+  var threw = false;
+  try {
+    fn();
+  } catch (exc) {
+    threw = true;
+  }
+  assert(threw, "Expected function to throw an error");
+}
+
 function testLengths () {
   var o = new ot.Operation(0);
   assertEqual(0, o.baseLength);
@@ -109,6 +119,50 @@ function testToString () {
   assertEqual("retain 2, insert 'lorem', delete 'ipsum', retain 5", o.toString());
 }
 
+function testFromJSON () {
+  var obj = {
+    id: '1234',
+    baseRevision: 3,
+    baseLength: 4,
+    targetLength: 5,
+    ops: [
+      { retain: 2 },
+      { delete: "a" },
+      { delete: "b" },
+      { insert: "cde" }
+    ]
+  };
+  var o = ot.Operation.fromJSON(obj);
+  assertEqual('1234', o.id);
+  assertEqual(3, o.baseRevision);
+  assertEqual(3, o.ops.length);
+  assertEqual(4, o.baseLength);
+  assertEqual(5, o.targetLength);
+
+  function clone (obj) {
+    var copy = {};
+    for (var name in obj) {
+      if (obj.hasOwnProperty(name)) {
+        copy[name] = obj[name];
+      }
+    }
+    return copy;
+  }
+
+  function assertIncorrectAfter (fn) {
+    var obj2 = clone(obj);
+    fn(obj2);
+    assertThrows(function () { ot.Operation.fromJSON(obj2); });
+  }
+
+  assertIncorrectAfter(function (obj2) { delete obj2.id; });
+  assertIncorrectAfter(function (obj2) { obj2.baseRevision = -42; })
+  assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
+  assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; })
+  assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
+  assertIncorrectAfter(function (obj2) { obj2.ops.push({ lorem: 'no such operation' }); });
+}
+
 function testCompose () {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = randomString(20);
@@ -153,6 +207,7 @@ exports.run = function () {
   testLengths();
   testOpsMerging();
   testToString();
+  testFromJSON();
   times(n, testApply);
   times(n, testCompose);
   times(n, testTransform);
