@@ -26,34 +26,14 @@
 <body>
   <div id="wrapper">
     <h1>Collaborative editing with CodeMirror</h1>
-<textarea id="code">
-for (var i = 0; i &lt; 1000; i++) {
-  foo(i);
-  console.log("lorem");
-}
-</textarea>
   </div>
 
-  <script src="codemirror/lib/codemirror.js"></script>
-  <script src="codemirror/mode/javascript/javascript.js"></script>
-  <script src="../../lib/operational-transformation.js"></script>
-  <script src="codemirror-operational-transformation.js"></script>
-
-  <script>
-    (function () {
-      var textarea = document.getElementById('code');
-      var cm = CodeMirror.fromTextArea(textarea, {
-        lineNumbers: true,
-        mode: 'javascript',
-        onChange: function (cm, change) {
-          var operation = codeMirrorChangeToOperation(cm, change, oldValue);
-          console.log(change, operation);
-          oldValue = cm.getValue();
-        }
-      });
-      var oldValue = cm.getValue();
-    })();
-  </script>
+  <script src="/codemirror/codemirror/lib/codemirror.js"></script>
+  <!--<script src="/codemirror/codemirror/mode/javascript/javascript.js"></script>-->
+  <script src="/operational-transformation.js"></script>
+  <script src="/client.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/codemirror/client.js"></script>
 </body>
 
 </html>
