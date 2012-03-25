@@ -17,6 +17,12 @@ app.configure(function () {
 
 var io = socketIO.listen(app);
 
+// source: http://devcenter.heroku.com/articles/using-socket-io-with-node-js-on-heroku
+io.configure('production', function () {
+  io.set('transports', ['xhr-polling']); 
+  io.set('polling duration', 10); 
+});
+
 var str = "lorem ipsum\ndolor sit amet";
 
 var server = new Server(str);
