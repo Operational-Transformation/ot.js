@@ -69,6 +69,13 @@ function testLengths () {
   assertEqual(10, o.targetLength);
 }
 
+function testApply () {
+  var str = randomString(50);
+  var o = randomOperation(0, str);
+  assertEqual(str.length, o.baseLength);
+  assertEqual(ot.apply(str, o).length, o.targetLength);
+}
+
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
   var o = new ot.Operation(0);
@@ -146,6 +153,7 @@ exports.run = function () {
   testLengths();
   testOpsMerging();
   testToString();
+  times(n, testApply);
   times(n, testCompose);
   times(n, testTransform);
 };
