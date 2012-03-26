@@ -38,6 +38,14 @@ function testApply () {
   h.assertEqual(ot.apply(str, o).length, o.targetLength);
 }
 
+function testEmptyOps () {
+  var o = new ot.Operation(0);
+  o.retain(0);
+  o.insert('');
+  o.delete('');
+  h.assertEqual(0, o.ops.length);
+}
+
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
   var o = new ot.Operation(0);
@@ -162,6 +170,7 @@ exports.run = function () {
   var n = 500;
   testIDGeneration();
   testLengths();
+  testEmptyOps();
   testOpsMerging();
   testToString();
   testFromJSON();
