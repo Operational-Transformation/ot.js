@@ -6,15 +6,11 @@
     var diff = newValue.length - oldValue.length;
     var deletedChars = text.length - diff;
 
-    if (from > 0) {
-      operation.retain(from);
-    }
+    operation.retain(from);
     if (deletedChars > 0) {
       operation.delete(oldValue.slice(from, from + deletedChars));
     }
-    if (text) {
-      operation.insert(text);
-    }
+    operation.insert(text);
     if (oldValue.length - operation.baseLength > 0) {
       operation.retain(oldValue.length - operation.baseLength);
     }
@@ -81,15 +77,13 @@
       //mode: 'javascript',
       value: str,
       onChange: function (cm, change) {
-        if (fromServer) {
-          oldValue = cm.getValue();
-        } else {
+        if (!fromServer) {
           var operation = client.createOperation();
-          var operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
+          operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
           console.log(change, operation);
           client.applyClient(operation);
-          oldValue = cm.getValue();
         }
+        oldValue = cm.getValue();
       }
     });
 

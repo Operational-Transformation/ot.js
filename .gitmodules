@@ -1,3 +1,6 @@
 [submodule "integration/codemirror/codemirror"]
 	path = integration/codemirror/codemirror
 	url = https://github.com/marijnh/CodeMirror2.git
+[submodule "integration/ace/ace"]
+	path = integration/ace/ace
+	url = https://github.com/ajaxorg/ace.git
