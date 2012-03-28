@@ -31,6 +31,17 @@ function testLengths () {
   h.assertEqual(10, o.targetLength);
 }
 
+function testChaining () {
+  var o = new ot.Operation(0)
+    .retain(5)
+    .retain(0)
+    .insert("lorem")
+    .insert("")
+    .delete("abc")
+    .delete("");
+  h.assertEqual(3, o.ops.length);
+}
+
 function testApply () {
   var str = h.randomString(50);
   var o = h.randomOperation(0, str);
@@ -170,6 +181,7 @@ exports.run = function () {
   var n = 500;
   testIDGeneration();
   testLengths();
+  testChaining();
   testEmptyOps();
   testOpsMerging();
   testToString();
