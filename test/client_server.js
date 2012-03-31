@@ -58,7 +58,7 @@ NetworkChannel.prototype.receive = function () {
 
 function testClientServerInteraction () {
   var str = h.randomString();
-  var server = new Server(str, 0);
+  var server = new Server(str);
   var client1SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
   var client1ReceiveChannel = new NetworkChannel(function (o) { client1.applyServer(o); });
   var client1 = new MyClient(str, 0, client1SendChannel);
