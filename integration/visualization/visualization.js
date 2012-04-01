@@ -95,9 +95,33 @@ $(document).ready(function () {
 
   NetworkChannel.prototype.createElement = function (operation) {
     var info = operationInfo[operation.id];
-    var el = $('<span class="operation" />')
+    var el = $('<span class="operation" title="Operation" />')
       .addClass(info.creator.toLowerCase())
       .css(this.up ? { top: '150px' } : { top: '-24px' })
+      .popover({
+        content: function () {
+          function operationToHtml (operation) {
+            var html = '';
+            var ops = operation.ops;
+            for (var i = 0; i < ops.length; i++) {
+              if (i !== 0) { html += ", "; }
+              var op = ops[i];
+              if (op.retain) {
+                html += '<span class="op-retain">retain(' + op.retain + ')</span>';
+              } else if (op.insert) {
+                html += '<span class="op-insert">insert("' + op.insert + '")</span>';
+              } else {
+                html += '<span class="op-delete">delete("' + op.delete + '")</span>';
+              }
+            }
+            return html;
+          }
+          return '<table class="table table-condensed table-noheader">'
+               + '<tr><th>Author</th><td>' + info.creator + '</td></tr>'
+               + '<tr><th>Changeset</th><td>' + operationToHtml(operation) + '</td></tr>'
+               + '</table>';
+        }
+      })
       .appendTo(this.el);
     var self = this;
     async(function () { self.distributeElements(); });

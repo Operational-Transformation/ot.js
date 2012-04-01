@@ -50,7 +50,7 @@
 }
 
 .network-channel div {
-  position: absolute; left: 50%; top: 0; bottom: 0;
+  position: absolute; left: 23px; top: 0; bottom: 0;
   border-left: 3px dashed #daedef;
 }
 
@@ -73,3 +73,11 @@
 
 .operation.alice { background: #006727; }
 .operation.bob   { background: #cb4e26; }
+
+.table-noheader tr:first-child td, .table-noheader tr:first-child th {
+  border-top: none;
+}
+
+.op-retain { color: #3a3a3a; }
+.op-insert { color: #1a7324; }
+.op-delete { color: #ce1b0f; }
