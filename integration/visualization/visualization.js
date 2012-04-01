@@ -24,25 +24,25 @@ $(document).ready(function () {
       self.aliceReceiveChannel.write(operation);
       self.bobReceiveChannel.write(operation);
     });
-    this.aliceSendChannel = new NetworkChannel(function (o) {
+    this.aliceSendChannel = new NetworkChannel(true, function (o) {
       self.server.receiveOperation(o);
     }).appendTo(this.el);
-    this.aliceSendChannel.el.attr({ id: 'alice-send-channel' }).addClass('up-channel');
-    this.aliceReceiveChannel = new NetworkChannel(function (o) {
+    this.aliceSendChannel.el.attr({ id: 'alice-send-channel' });
+    this.aliceReceiveChannel = new NetworkChannel(false, function (o) {
       self.alice.applyServer(o);
     }).appendTo(this.el);
-    this.aliceReceiveChannel.el.attr({ id: 'alice-receive-channel' }).addClass('down-channel');
+    this.aliceReceiveChannel.el.attr({ id: 'alice-receive-channel' });
     this.alice = new MyClient("Alice", str, 0, this.aliceSendChannel)
       .appendTo(this.el);
     this.alice.el.attr({ id: 'alice' });
-    this.bobSendChannel = new NetworkChannel(function (o) {
+    this.bobSendChannel = new NetworkChannel(true, function (o) {
       self.server.receiveOperation(o);
     }).appendTo(this.el);
-    this.bobSendChannel.el.attr({ id: 'bob-send-channel' }).addClass('up-channel');
-    this.bobReceiveChannel = new NetworkChannel(function (o) {
+    this.bobSendChannel.el.attr({ id: 'bob-send-channel' });
+    this.bobReceiveChannel = new NetworkChannel(false, function (o) {
       self.bob.applyServer(o);
     }).appendTo(this.el);
-    this.bobReceiveChannel.el.attr({ id: 'bob-receive-channel' }).addClass('down-channel');
+    this.bobReceiveChannel.el.attr({ id: 'bob-receive-channel' });
     this.bob = new MyClient("Bob", str, 0, this.bobSendChannel)
       .appendTo(this.el);
     this.bob.el.attr({ id: 'bob' });
@@ -60,14 +60,19 @@ $(document).ready(function () {
 
   // Network channel
 
-  function NetworkChannel (onReceive) {
+  function NetworkChannel (up, onReceive) {
     this.buffer = [];
+    this.up = up;
     this.onReceive = onReceive;
-    this.el = $('<div class="network-channel" />');
+    this.el = $('<div class="network-channel"><div /></div>')
+      .addClass(up ? 'up-channel' : 'down-channel');
     var that = this;
-    this.button = $('<input type="button" value="Receive" disabled="disabled" />')
+    var arrow = up ? '&uarr;' : '&darr;';
+    this.button = $('<a href="#" class="disabled">' + arrow + '</a>')
       .appendTo(this.el)
-      .click(function () {
+      .click(function (e) {
+        e.preventDefault();
+        if ($(this).hasClass('disabled')) { return; }
         that.receive();
       });
   }
@@ -76,14 +81,14 @@ $(document).ready(function () {
 
   NetworkChannel.prototype.write = function (val) {
     if (this.buffer.length === 0) {
-      this.button.removeAttr('disabled');
+      this.button.removeClass('disabled');
     }
     this.buffer.push(val);
   };
 
   NetworkChannel.prototype.read = function () {
     if (this.buffer.length === 1) {
-      this.button.attr('disabled', 'disabled');
+      this.button.addClass('disabled');
     }
     return this.buffer.shift();
   };
@@ -109,6 +114,7 @@ $(document).ready(function () {
 
   function MyClient (name, str, revision, channel) {
     Client.call(this, revision);
+    this.name = name;
     this.channel = channel;
     this.fromServer = false;
 
@@ -138,7 +144,6 @@ $(document).ready(function () {
   extend(MyClient.prototype, View);
 
   MyClient.prototype.sendOperation = function (operation) {
-    // TODO
     this.channel.write(operation);
   };
 

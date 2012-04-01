@@ -36,27 +36,35 @@
   width: 50px; height: 150px;
 }
 
-.network-channel input {
+.network-channel a {
   position: absolute; left: 0;
+  text-decoration: none;
+  font-size: 24px; font-weight: bold;
+  color: #004bc3;
 }
 
-.up-channel input {
-  top: 20px;
+.network-channel a.disabled {
+  color: #cadce4;
+  cursor: default;
 }
 
-.down-channel input {
-  bottom: 20px;
+.network-channel div {
+  position: absolute; left: 50%; top: 0; bottom: 0;
+  border-left: 3px dashed #daedef;
 }
+
+.up-channel a   { top:    10px; }
+.down-channel a { bottom: 10px; }
 
 #alice-send-channel {
-  left: 100px;
+  left: 125px;
 }
 #alice-receive-channel {
-  left: 250px;
+  left: 285px;
 }
 #bob-send-channel {
-  right: 100px;
+  right: 125px;
 }
 #bob-receive-channel {
-  right: 250px;
+  right: 285px;
 }

@@ -25,7 +25,7 @@
 
     var wrapper = document.getElementById('wrapper');
     var oldValue = str;
-    var cm = CodeMirror(wrapper, {
+    var cm = window.cm = CodeMirror(wrapper, {
       lineNumbers: true,
       //mode: 'javascript',
       value: str,
