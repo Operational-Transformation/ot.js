@@ -1,36 +1,48 @@
+h1 {
+  margin-bottom: 16px;
+}
+
 #visualization {
   position: relative;
 }
 
 #server, .client {
-  border-radius: 10px;
-  -moz-border-radius: 10px;
-  -webkit-border-radius: 10px;
-  padding: 20px;
   position: absolute;
   z-index: 100;
 }
 
+#server h2, .client h2 {
+  font-size: 28px; line-height: 42px; margin-top: -8px;
+}
+
 #server {
-  background: #cadce4;
-  width: 920px;
+  width: 900px;
   height: 60px;
 }
+#server h2 { color: #1e488d; }
 
 .client {
   width: 420px;
   top: 250px;
 }
-
-#alice {
-  background: #8ed2a8;
-  left: 0;
+.client .CodeMirror {
+  background: #ffffff;
+}
+.client .CodeMirror-gutter {
+  background: #eeeeee;
+}
+.client .CodeMirror-scroll {
+  height: 120px;
 }
 
-#bob {
-  background: #dfb3a5;
-  right: 0;
-}
+#alice { left: 0; }
+#bob { right: 0; }
+
+#alice h2        { color:      #d45e12; }
+.operation.alice { background: #d45e12; }
+#bob h2          { color:      #ca1171; }
+.operation.bob   { background: #ca1171; }
+
 
 .network-channel {
   position: absolute; top: 100px;
@@ -55,7 +67,7 @@
 }
 
 .up-channel a   { top:    10px; }
-.down-channel a { bottom: 10px; }
+.down-channel a { bottom: 14px; }
 
 #alice-send-channel    { left:  125px; }
 #alice-receive-channel { left:  285px; }
@@ -71,8 +83,6 @@
   -webkit-transition: all 0.5s ease-in-out;
 }
 
-.operation.alice { background: #006727; }
-.operation.bob   { background: #cb4e26; }
 
 .table-noheader tr:first-child td, .table-noheader tr:first-child th {
   border-top: none;

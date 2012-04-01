@@ -165,7 +165,7 @@ $(document).ready(function () {
 
   function MyServer (str) {
     Server.call(this, str);
-    this.el = $('<div id="server" />');
+    this.el = $('<div id="server" class="well" />');
     $('<h2 />').text("Server").appendTo(this.el);
   }
 
@@ -184,7 +184,7 @@ $(document).ready(function () {
     this.oldValue = str;
 
     var self = this;
-    this.el = $('<div class="client" />');
+    this.el = $('<div class="well client" />');
     $('<h2 />').text(name).appendTo(this.el);
     this.stateEl = $('<p />').appendTo(this.el).text("State: Synchronized");
     this.cm = CodeMirror($('<div />').appendTo(this.el).get(0), {
