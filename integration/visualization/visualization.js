@@ -8,8 +8,45 @@ $(document).ready(function () {
     appendTo: function (el) {
       this.el.appendTo(el);
       return this;
+    },
+    $: function (sel) {
+      return $(sel, this.el);
     }
   };
+
+
+  // Operation
+
+  function operationToHtml (operation) {
+    var html = '';
+    var ops = operation.ops;
+    for (var i = 0; i < ops.length; i++) {
+      if (i !== 0) { html += ", "; }
+      var op = ops[i];
+      if (op.retain) {
+        html += '<span class="op-retain">retain(' + op.retain + ')</span>';
+      } else if (op.insert) {
+        html += '<span class="op-insert">insert("' + op.insert + '")</span>';
+      } else {
+        html += '<span class="op-delete">delete("' + op.delete + '")</span>';
+      }
+    }
+    return html;
+  }
+
+  function createOperationElement (operation) {
+    var info = operationInfo[operation.id];
+    return $('<span class="operation" title="Operation" />')
+      .addClass(info.creator.toLowerCase())
+      .popover({
+        content: function () {
+          return '<table class="table table-condensed table-noheader">'
+               + tr("Author", info.creator)
+               + tr("Changeset", operationToHtml(operation))
+               + '</table>';
+        }
+      });
+  }
 
 
   // Visualization
@@ -21,6 +58,7 @@ $(document).ready(function () {
     var self = this;
     this.server = new MyServer(str).appendTo(this.el);
     this.server.addListener('newOperation', function (operation) {
+      self.server.appendToHistory(operation);
       self.aliceReceiveChannel.write(operation);
       self.bobReceiveChannel.write(operation);
     });
@@ -94,38 +132,11 @@ $(document).ready(function () {
   };
 
   NetworkChannel.prototype.createElement = function (operation) {
-    var info = operationInfo[operation.id];
-    var el = $('<span class="operation" title="Operation" />')
-      .addClass(info.creator.toLowerCase())
-      .css(this.up ? { top: '150px' } : { top: '-24px' })
-      .popover({
-        content: function () {
-          function operationToHtml (operation) {
-            var html = '';
-            var ops = operation.ops;
-            for (var i = 0; i < ops.length; i++) {
-              if (i !== 0) { html += ", "; }
-              var op = ops[i];
-              if (op.retain) {
-                html += '<span class="op-retain">retain(' + op.retain + ')</span>';
-              } else if (op.insert) {
-                html += '<span class="op-insert">insert("' + op.insert + '")</span>';
-              } else {
-                html += '<span class="op-delete">delete("' + op.delete + '")</span>';
-              }
-            }
-            return html;
-          }
-          return '<table class="table table-condensed table-noheader">'
-               + '<tr><th>Author</th><td>' + info.creator + '</td></tr>'
-               + '<tr><th>Changeset</th><td>' + operationToHtml(operation) + '</td></tr>'
-               + '</table>';
-        }
-      })
-      .appendTo(this.el);
     var self = this;
     async(function () { self.distributeElements(); });
-    return el;
+    return createOperationElement(operation)
+      .css(this.up ? { top: '150px' } : { top: '-24px' })
+      .appendTo(this.el);
   };
 
   NetworkChannel.prototype.read = function () {
@@ -167,10 +178,25 @@ $(document).ready(function () {
     Server.call(this, str);
     this.el = $('<div id="server" class="well" />');
     $('<h2 />').text("Server").appendTo(this.el);
+    this.stateTable = $('<table class="table table-condensed table-noheader" />').html(
+      tr("Content", quote(unescape(this.str)), 'server-content') +
+      tr("History", "", 'server-history')
+    ).appendTo(this.el);
   }
 
   inherit(MyServer, Server);
   extend(MyServer.prototype, View);
+
+  MyServer.prototype.receiveOperation = function (operation) {
+    Server.prototype.receiveOperation.call(this, operation);
+    this.$('.server-content td').text(quote(unescape(this.str)));
+  };
+
+  MyServer.prototype.appendToHistory = function (operation) {
+    this.$('.server-history td')
+      .append(document.createTextNode(" "))
+      .append(createOperationElement(operation));
+  };
 
 
   // MyClient
@@ -244,6 +270,19 @@ $(document).ready(function () {
 
   function async (fn) {
     setTimeout(fn, 0);
+  }
+
+  function tr (th, td, klass) {
+    klass = klass ? ' class="'+klass+'"' : '';
+    return '<tr' + klass + '><th>' + th + '</th><td>' + td + '</td></tr>';
+  }
+
+  function unescape (str) {
+    return str.replace(/\n/g, '\\n').replace(/\t/g, '\\t');
+  }
+
+  function quote (str) {
+    return '"' + str + '"';
   }
 
 
