@@ -58,10 +58,16 @@ $(document).ready(function () {
   };
 
 
+  // Information for operations
+
+  var operationInfo = {};
+
+
   // Network channel
 
   function NetworkChannel (up, onReceive) {
     this.buffer = [];
+    this.els = [];
     this.up = up;
     this.onReceive = onReceive;
     this.el = $('<div class="network-channel"><div /></div>')
@@ -84,13 +90,46 @@ $(document).ready(function () {
       this.button.removeClass('disabled');
     }
     this.buffer.push(val);
+    this.els.push(this.createElement(val));
+  };
+
+  NetworkChannel.prototype.createElement = function (operation) {
+    var info = operationInfo[operation.id];
+    var el = $('<span class="operation" />')
+      .addClass(info.creator.toLowerCase())
+      .css(this.up ? { top: '150px' } : { top: '-24px' })
+      .appendTo(this.el);
+    var self = this;
+    async(function () { self.distributeElements(); });
+    return el;
   };
 
   NetworkChannel.prototype.read = function () {
     if (this.buffer.length === 1) {
       this.button.addClass('disabled');
     }
-    return this.buffer.shift();
+    var val = this.buffer.shift();
+    this.removeElement(this.els.shift());
+    return val;
+  };
+
+  NetworkChannel.prototype.removeElement = function (el) {
+    el.css(this.up ? { top: '-24px' } : { top: '150px' });
+    setTimeout(function () {
+      el.remove();
+    }, 500);
+    this.distributeElements();
+  };
+
+  NetworkChannel.prototype.distributeElements = function () {
+    var totalHeight = 150;
+    var els = this.els;
+    var partLength = 150 / (els.length+1);
+    for (var i = 0; i < els.length; i++) {
+      var el = els[i];
+      var index = this.up ? i + 1 : els.length - i;
+      el.css({ top: (Math.floor(index*partLength) - 12) + 'px' });
+    }
   };
 
   NetworkChannel.prototype.receive = function () {
@@ -144,6 +183,9 @@ $(document).ready(function () {
   extend(MyClient.prototype, View);
 
   MyClient.prototype.sendOperation = function (operation) {
+    operationInfo[operation.id] = {
+      creator: this.name
+    };
     this.channel.write(operation);
   };
 
@@ -174,6 +216,10 @@ $(document).ready(function () {
         target[name] = source[name];
       }
     }
+  }
+
+  function async (fn) {
+    setTimeout(fn, 0);
   }
 
 

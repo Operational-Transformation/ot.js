@@ -8,6 +8,7 @@
   -webkit-border-radius: 10px;
   padding: 20px;
   position: absolute;
+  z-index: 100;
 }
 
 #server {
@@ -56,15 +57,19 @@
 .up-channel a   { top:    10px; }
 .down-channel a { bottom: 10px; }
 
-#alice-send-channel {
-  left: 125px;
+#alice-send-channel    { left:  125px; }
+#alice-receive-channel { left:  285px; }
+#bob-send-channel      { right: 125px; }
+#bob-receive-channel   { right: 285px; }
+
+.operation {
+  display: block; width: 24px; height: 24px;
+  border-radius: 12px; -moz-border-radius: 12px; -webkit-border-radius: 12px;
+  position: absolute; left: 13px;
+          transition: all 0.5s ease-in-out;
+     -moz-transition: all 0.5s ease-in-out;
+  -webkit-transition: all 0.5s ease-in-out;
 }
-#alice-receive-channel {
-  left: 285px;
-}
-#bob-send-channel {
-  right: 125px;
-}
-#bob-receive-channel {
-  right: 285px;
-}
+
+.operation.alice { background: #006727; }
+.operation.bob   { background: #cb4e26; }
