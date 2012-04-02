@@ -92,8 +92,8 @@ $(document).ready(function () {
 
   extend(Visualization.prototype, View);
 
-  Visualization.prototype.appendTo = function (el) {
-    View.appendTo.call(this, el);
+  Visualization.prototype.insertAfter = function (el) {
+    View.insertAfter.call(this, el);
     this.alice.cm.refresh();
     this.bob.cm.refresh();
     return this;
