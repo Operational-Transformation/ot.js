@@ -3,6 +3,7 @@ h1 {
 }
 
 #visualization {
+  height: 510px;
   position: relative;
 }
 
@@ -20,17 +21,18 @@ h1 {
   height: 90px;
 }
 #server h2 { color: #1e488d; }
-#server th { width: 80px; }
+#server th { width: 60px; }
 .server-content td { font-family: monospace; }
 
 .client {
-  width: 420px;
+  width: 420px; height: 190px;
   top: 280px;
 }
 .client .state { line-height: 24px; }
 .client .state span { white-space: nowrap; overflow: hidden; }
 .client .CodeMirror {
   background: #ffffff;
+  border: 1px solid #dddddd;
 }
 .client .CodeMirror-gutter {
   background: #eeeeee;
@@ -103,3 +105,9 @@ h1 {
 .op-retain { color: #3a3a3a; }
 .op-insert { color: #1a7324; }
 .op-delete { color: #ce1b0f; }
+
+footer {
+  border-top: 1px solid #eee;
+  margin: 24px 0 0; padding: 8px 0;
+  color: #555;
+}

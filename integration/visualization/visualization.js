@@ -9,6 +9,10 @@ $(document).ready(function () {
       this.el.appendTo(el);
       return this;
     },
+    insertAfter: function (el) {
+      this.el.insertAfter(el);
+      return this;
+    },
     $: function (sel) {
       return $(sel, this.el);
     }
@@ -213,7 +217,7 @@ $(document).ready(function () {
     this.el = $('<div class="well client" />');
     $('<h2 />').text(name).appendTo(this.el);
     this.stateEl = $('<p class="state" />')
-      .html("State: <span>Synchronized</span>")
+      .html("<strong>State:</strong> <span>Synchronized</span>")
       .appendTo(this.el);
     this.cm = CodeMirror($('<div />').appendTo(this.el).get(0), {
       lineNumbers: true,
@@ -327,5 +331,5 @@ $(document).ready(function () {
 
   // Initialize Visualization
 
-  new Visualization("Lorem ipsum").appendTo($('#wrapper'));
+  new Visualization("Lorem ipsum").insertAfter($('#wrapper h1'));
 });
