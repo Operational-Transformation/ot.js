@@ -38,18 +38,21 @@ $(document).ready(function () {
     return html;
   }
 
-  function createOperationElement (operation) {
+  function operationPopoverContent (operation, author) {
     var info = operationInfo[operation.id];
+    return function () {
+      return '<table class="table table-condensed table-noheader">'
+           + tr("Author", author || info.creator)
+           + tr("Changeset", operationToHtml(operation))
+           + '</table>';
+    };
+  }
+
+  function createOperationElement (creator, id) {
     return $('<span class="operation" title="Operation" />')
-      .addClass(info.creator.toLowerCase())
-      .popover({
-        content: function () {
-          return '<table class="table table-condensed table-noheader">'
-               + tr("Author", info.creator)
-               + tr("Changeset", operationToHtml(operation))
-               + '</table>';
-        }
-      });
+      .addClass('operation' + id)
+      .attr({ 'data-operation-id': id })
+      .addClass(creator.toLowerCase());
   }
 
 
@@ -57,7 +60,16 @@ $(document).ready(function () {
 
   function Visualization (str) {
     this.str = str;
-    this.el = $('<div id="visualization" />');
+    this.el = $('<div id="visualization" />')
+      .delegate('.operation', {
+        mouseenter: function () {
+          var operationId = $(this).attr('data-operation-id');
+          $('.operation' + operationId).addClass('same-operation');
+        },
+        mouseleave: function () {
+          $('.same-operation').removeClass('same-operation');
+        }
+      });
 
     var self = this;
     this.server = new MyServer(str).appendTo(this.el);
@@ -138,7 +150,8 @@ $(document).ready(function () {
   NetworkChannel.prototype.createElement = function (operation) {
     var self = this;
     async(function () { self.distributeElements(); });
-    return createOperationElement(operation)
+    return createOperationElement(operationInfo[operation.id].creator, operation.id)
+      .popover({ content: operationPopoverContent(operation) })
       .css(this.up ? { top: '150px' } : { top: '-24px' })
       .appendTo(this.el);
   };
@@ -192,6 +205,7 @@ $(document).ready(function () {
   extend(MyServer.prototype, View);
 
   MyServer.prototype.receiveOperation = function (operation) {
+    highlight(this.$('.server-history .operation').slice(operation.revision));
     Server.prototype.receiveOperation.call(this, operation);
     this.$('.server-content td').text(quote(unescape(this.str)));
   };
@@ -199,7 +213,10 @@ $(document).ready(function () {
   MyServer.prototype.appendToHistory = function (operation) {
     this.$('.server-history td')
       .append(document.createTextNode(" "))
-      .append(createOperationElement(operation));
+      .append(
+        createOperationElement(operationInfo[operation.id].creator, operation.id)
+          .popover({ content: operationPopoverContent(operation) })
+      );
   };
 
 
@@ -214,7 +231,19 @@ $(document).ready(function () {
     this.oldValue = str;
 
     var self = this;
-    this.el = $('<div class="well client" />');
+    this.el = $('<div class="well client" />')
+      .popover({
+        selector: '.operation.outstanding',
+        content: function () {
+          return operationPopoverContent(self.outstanding)();
+        }
+      })
+      .popover({
+        selector: '.operation.buffer',
+        content: function () {
+          return operationPopoverContent(self.buffer)();
+        }
+      })
     $('<h2 />').text(name).appendTo(this.el);
     this.stateEl = $('<p class="state" />')
       .html("<strong>State:</strong> <span>Synchronized</span>")
@@ -251,29 +280,55 @@ $(document).ready(function () {
     this.fromServer = false;
   };
 
+  MyClient.prototype.states = {
+    synchronized: extend(extend({}, Client.prototype.states.synchronized), {}),
+    awaitingConfirm: extend(extend({}, Client.prototype.states.awaitingConfirm), {
+      applyServer: function (operation) {
+        if (operation.id !== this.outstanding.id) {
+          highlight($('.operation', this.stateEl));
+        }
+        Client.prototype.states.awaitingConfirm.applyServer.call(this, operation);
+      }
+    }),
+    awaitingWithBuffer: extend(extend({}, Client.prototype.states.awaitingWithBuffer), {
+      applyClient: function (operation) {
+        highlight($('.operation', this.stateEl).eq(1));
+        Client.prototype.states.awaitingWithBuffer.applyClient.call(this, operation);
+      },
+      applyServer: function (operation) {
+        if (operation.id !== this.outstanding.id) {
+          highlight($('.operation', this.stateEl));
+        }
+        Client.prototype.states.awaitingWithBuffer.applyServer.call(this, operation);
+      }
+    })
+  };
+
+  console.log(MyClient.prototype.states);
+
   var stateTransitions = {
     'synchronized->awaitingConfirm': function () {
+      var self = this;
       $('> span', this.stateEl)
         .text("Awaiting ")
-        .append(createOperationElement(this.outstanding))
+        .append(createOperationElement(this.name, this.outstanding.id).addClass('outstanding'))
         .append(document.createTextNode(" "));
     },
     'awaitingConfirm->awaitingWithBuffer': function () {
-      operationInfo[this.buffer.id] = {
-        creator: this.name
-      };
+      var self = this;
       $('<span>with buffer </span>')
-        .append(createOperationElement(this.buffer))
+        .append(createOperationElement(this.name).addClass('buffer'))
         .fadeIn()
         .appendTo(this.stateEl);
     },
     'awaitingWithBuffer->awaitingConfirm': function () {
       var spans = $('> span', this.stateEl);
       hideSpan(spans.eq(0));
-      window.a = spans.get(1);
-      var textNode = spans.get(1).firstChild;
-      textNode.data = "Awaiting ";
+      spans.get(1).firstChild.data = "Awaiting ";
       spans.eq(1).append(document.createTextNode(" "));
+      createOperationElement(this.name, this.outstanding.id)
+        .addClass('outstanding')
+        .replaceAll($('.operation', this.stateEl).eq(1));
     },
     'awaitingConfirm->synchronized': function () {
       $('> span', this.stateEl).text("Synchronized");
@@ -303,6 +358,7 @@ $(document).ready(function () {
         target[name] = source[name];
       }
     }
+    return target;
   }
 
   function async (fn) {
@@ -325,6 +381,17 @@ $(document).ready(function () {
   function hideSpan (span) {
     span.animate({ width: 0 }, 500, function () {
       span.remove();
+    });
+  }
+
+  function highlight (el) {
+    // hacky!
+    el.removeClass('animate').addClass('highlighted');
+    async(function () {
+      el.addClass('animate');
+      async(function () {
+        el.removeClass('highlighted');
+      });
     });
   }
 
