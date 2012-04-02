@@ -49,6 +49,16 @@ function testApply () {
   h.assertEqual(ot.apply(str, o).length, o.targetLength);
 }
 
+function testInvert () {
+  var str = h.randomString(50);
+  var o = h.randomOperation(0, str);
+  var p = ot.invert(o);
+  h.assertEqual(p.revision, 1);
+  h.assertEqual(o.baseLength, p.targetLength);
+  h.assertEqual(o.targetLength, p.baseLength);
+  h.assertEqual(ot.apply(ot.apply(str, o), p), str);
+}
+
 function testEmptyOps () {
   var o = new ot.Operation(0);
   o.retain(0);
@@ -187,6 +197,7 @@ exports.run = function () {
   testToString();
   testFromJSON();
   h.times(n, testApply);
+  h.times(n, testInvert);
   h.times(n, testCompose);
   h.times(n, testTransform);
 };
