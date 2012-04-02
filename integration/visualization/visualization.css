@@ -27,6 +27,8 @@ h1 {
   width: 420px;
   top: 280px;
 }
+.client .state { line-height: 24px; }
+.client .state span { white-space: nowrap; overflow: hidden; }
 .client .CodeMirror {
   background: #ffffff;
 }
@@ -76,7 +78,8 @@ h1 {
 #bob-send-channel      { right: 125px; }
 #bob-receive-channel   { right: 285px; }
 
-#server .operation {
+#server .operation, .client .operation {
+  vertical-align: -20%;
   display: inline-block;
   width: 16px; height: 16px;
   border-radius: 8px; -moz-border-radius: 8px; -webkit-border-radius: 8px;

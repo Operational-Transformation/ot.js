@@ -212,7 +212,9 @@ $(document).ready(function () {
     var self = this;
     this.el = $('<div class="well client" />');
     $('<h2 />').text(name).appendTo(this.el);
-    this.stateEl = $('<p />').appendTo(this.el).text("State: Synchronized");
+    this.stateEl = $('<p class="state" />')
+      .html("State: <span>Synchronized</span>")
+      .appendTo(this.el);
     this.cm = CodeMirror($('<div />').appendTo(this.el).get(0), {
       lineNumbers: true,
       lineWrapping: true,
@@ -245,9 +247,40 @@ $(document).ready(function () {
     this.fromServer = false;
   };
 
+  var stateTransitions = {
+    'synchronized->awaitingConfirm': function () {
+      $('> span', this.stateEl)
+        .text("Awaiting ")
+        .append(createOperationElement(this.outstanding))
+        .append(document.createTextNode(" "));
+    },
+    'awaitingConfirm->awaitingWithBuffer': function () {
+      operationInfo[this.buffer.id] = {
+        creator: this.name
+      };
+      $('<span>with buffer </span>')
+        .append(createOperationElement(this.buffer))
+        .fadeIn()
+        .appendTo(this.stateEl);
+    },
+    'awaitingWithBuffer->awaitingConfirm': function () {
+      var spans = $('> span', this.stateEl);
+      hideSpan(spans.eq(0));
+      window.a = spans.get(1);
+      var textNode = spans.get(1).firstChild;
+      textNode.data = "Awaiting ";
+      spans.eq(1).append(document.createTextNode(" "));
+    },
+    'awaitingConfirm->synchronized': function () {
+      $('> span', this.stateEl).text("Synchronized");
+    }
+  };
+
   MyClient.prototype.transitionTo = function () {
+    var oldState = this.state;
     Client.prototype.transitionTo.apply(this, arguments);
-    this.stateEl.text("State: " + this.state);
+    //this.stateEl.text("State: " + this.state);
+    stateTransitions[oldState + '->' + this.state].call(this);
   };
 
 
@@ -283,6 +316,12 @@ $(document).ready(function () {
 
   function quote (str) {
     return '"' + str + '"';
+  }
+
+  function hideSpan (span) {
+    span.animate({ width: 0 }, 500, function () {
+      span.remove();
+    });
   }
 
 
