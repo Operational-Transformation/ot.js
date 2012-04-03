@@ -43,6 +43,7 @@ $(document).ready(function () {
     return function () {
       return '<table class="table table-condensed table-noheader">'
            + tr("Author", author || info.creator)
+           + tr("Revision", operation.revision)
            + tr("Changeset", operationToHtml(operation))
            + '</table>';
     };
@@ -233,17 +234,15 @@ $(document).ready(function () {
     var self = this;
     this.el = $('<div class="well client" />')
       .popover({
-        selector: '.operation.outstanding',
+        selector: '.operation',
         content: function () {
-          return operationPopoverContent(self.outstanding)();
+          if ($(this).hasClass('buffer')) {
+            return operationPopoverContent(self.buffer, self.name)();
+          } else {
+            return operationPopoverContent(self.outstanding)();
+          }
         }
-      })
-      .popover({
-        selector: '.operation.buffer',
-        content: function () {
-          return operationPopoverContent(self.buffer)();
-        }
-      })
+      });
     $('<h2 />').text(name).appendTo(this.el);
     this.stateEl = $('<p class="state" />')
       .html("<strong>State:</strong> <span>Synchronized</span>")
@@ -317,7 +316,7 @@ $(document).ready(function () {
     'awaitingConfirm->awaitingWithBuffer': function () {
       var self = this;
       $('<span>with buffer </span>')
-        .append(createOperationElement(this.name).addClass('buffer'))
+        .append(createOperationElement(this.name, this.buffer.id).addClass('buffer'))
         .fadeIn()
         .appendTo(this.stateEl);
     },
