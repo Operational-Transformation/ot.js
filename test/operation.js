@@ -1,11 +1,11 @@
-var ot = require('../lib/operational-transformation');
+var Operation = require('../lib/operation');
 var h = require('./helpers');
 
 function testIDGeneration () {
   var seen = {};
   var n = 500;
   while (n--) {
-    var o = new ot.Operation(0);
+    var o = new Operation(0);
     if (seen[o.id]) {
       throw new Error("id collision");
     }
@@ -14,7 +14,7 @@ function testIDGeneration () {
 }
 
 function testLengths () {
-  var o = new ot.Operation(0);
+  var o = new Operation(0);
   h.assertEqual(0, o.baseLength);
   h.assertEqual(0, o.targetLength);
   o.retain(5);
@@ -32,7 +32,7 @@ function testLengths () {
 }
 
 function testChaining () {
-  var o = new ot.Operation(0)
+  var o = new Operation(0)
     .retain(5)
     .retain(0)
     .insert("lorem")
@@ -46,21 +46,21 @@ function testApply () {
   var str = h.randomString(50);
   var o = h.randomOperation(0, str);
   h.assertEqual(str.length, o.baseLength);
-  h.assertEqual(ot.apply(str, o).length, o.targetLength);
+  h.assertEqual(o.apply(str).length, o.targetLength);
 }
 
 function testInvert () {
   var str = h.randomString(50);
   var o = h.randomOperation(0, str);
-  var p = ot.invert(o);
+  var p = o.invert();
   h.assertEqual(p.revision, 1);
   h.assertEqual(o.baseLength, p.targetLength);
   h.assertEqual(o.targetLength, p.baseLength);
-  h.assertEqual(ot.apply(ot.apply(str, o), p), str);
+  h.assertEqual(p.apply(o.apply(str)), str);
 }
 
 function testEmptyOps () {
-  var o = new ot.Operation(0);
+  var o = new Operation(0);
   o.retain(0);
   o.insert('');
   o.delete('');
@@ -69,7 +69,7 @@ function testEmptyOps () {
 
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
-  var o = new ot.Operation(0);
+  var o = new Operation(0);
   h.assertEqual(0, o.ops.length);
   o.retain(2);
   h.assertEqual(1, o.ops.length);
@@ -92,7 +92,7 @@ function testOpsMerging () {
 }
 
 function testToString () {
-  var o = new ot.Operation(0);
+  var o = new Operation(0);
   o.retain(2);
   o.insert('lorem');
   o.delete('ipsum');
@@ -113,7 +113,7 @@ function testFromJSON () {
       { insert: "cde" }
     ]
   };
-  var o = ot.Operation.fromJSON(obj);
+  var o = Operation.fromJSON(obj);
   h.assertEqual('1234', o.id);
   h.assertEqual(3, o.revision);
   h.assertEqual(3, o.ops.length);
@@ -133,7 +133,7 @@ function testFromJSON () {
   function assertIncorrectAfter (fn) {
     var obj2 = clone(obj);
     fn(obj2);
-    h.assertThrows(function () { ot.Operation.fromJSON(obj2); });
+    h.assertThrows(function () { Operation.fromJSON(obj2); });
   }
 
   assertIncorrectAfter(function (obj2) { delete obj2.id; });
@@ -148,14 +148,14 @@ function testCompose () {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = h.randomString(20);
   var a = h.randomOperation(0, str);
-  var afterA = ot.apply(str, a);
+  var afterA = a.apply(str);
   h.assertEqual(a.targetLength, afterA.length);
   var b = h.randomOperation(1, afterA);
-  var afterB = ot.apply(afterA, b);
+  var afterB = b.apply(afterA);
   h.assertEqual(b.targetLength, afterB.length);
-  var ab = ot.compose(a, b);
+  var ab = a.compose(b);
   h.assertEqual(ab.targetLength, b.targetLength);
-  var afterAB = ot.apply(str, ab);
+  var afterAB = ab.apply(str);
   if (afterB !== afterAB) {
     throw new Error(
       "compose error; str: " + str + ", a: " + a + ", b: " + b
@@ -169,17 +169,17 @@ function testTransform () {
   var str = h.randomString(20);
   var a = h.randomOperation(0, str);
   var b = h.randomOperation(0, str);
-  var abPrime = ot.transform(a, b);
+  var abPrime = Operation.transform(a, b);
   var aPrime = abPrime[0];
   var bPrime = abPrime[1];
   h.assertEqual(1, aPrime.revision);
   h.assertEqual(a.id, aPrime.id);
   h.assertEqual(1, bPrime.revision);
   h.assertEqual(b.id, bPrime.id);
-  var abPrime = ot.compose(a, bPrime);
-  var baPrime = ot.compose(b, aPrime);
-  var afterAbPrime = ot.apply(str, abPrime);
-  var afterBaPrime = ot.apply(str, baPrime);
+  var abPrime = a.compose(bPrime);
+  var baPrime = b.compose(aPrime);
+  var afterAbPrime = abPrime.apply(str);
+  var afterBaPrime = baPrime.apply(str);
   if (afterAbPrime !== afterBaPrime) {
     throw new Error(
       "transform error; str: " + str + ", a: " + a + ", b: " + b

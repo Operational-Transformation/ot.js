@@ -1,4 +1,4 @@
-var ot = require('../lib/operational-transformation');
+var Operation = require('../lib/operation');
 
 function randomInt (n) {
   return Math.floor(Math.random() * n);
@@ -14,8 +14,8 @@ function randomString (n) {
 }
 
 function randomOperation (operation, str) {
-  if (!(operation instanceof ot.Operation)) {
-    operation = new ot.Operation(operation);
+  if (!(operation instanceof Operation)) {
+    operation = new Operation(operation);
   }
   var left;
   while (left = str.length - operation.baseLength) {

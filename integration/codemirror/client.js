@@ -1,5 +1,6 @@
 (function () {
   var Client = ot_client.Client;
+  var Operation = ot.Operation;
 
   var socket = io.connect('/');
   socket.on('doc', function (obj) {
@@ -13,7 +14,7 @@
       // uncomment to simulate more latency
       //setTimeout(function () {
         socket.emit('operation', operation);
-      //}, 500);
+      //}, 1500);
     };
 
     var fromServer = false;
@@ -41,7 +42,7 @@
     });
 
     socket.on('operation', function (operation) {
-      operation = operational_transformation.Operation.fromJSON(operation);
+      operation = Operation.fromJSON(operation);
       client.applyServer(operation);
     });
   }

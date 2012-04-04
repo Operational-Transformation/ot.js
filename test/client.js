@@ -1,4 +1,4 @@
-var operational_transformation = require('../lib/operational-transformation');
+var Operation = require('../lib/operation');
 
 exports.run = function () {
   // TODO

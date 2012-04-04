@@ -1,4 +1,3 @@
-var ot = require('../lib/operational-transformation');
 var Client = require('../lib/client').Client;
 var Server = require('../lib/server').Server;
 var h = require('./helpers');
@@ -24,12 +23,12 @@ MyClient.prototype.sendOperation = function (operation) {
 };
 
 MyClient.prototype.applyOperation = function (operation) {
-  this.str = ot.apply(this.str, operation);
+  this.str = operation.apply(this.str);
 };
 
 MyClient.prototype.performOperation = function () {
   var operation = h.randomOperation(this.createOperation(), this.str);
-  this.str = ot.apply(this.str, operation);
+  this.str = operation.apply(this.str);
   this.applyClient(operation);
 };
 
