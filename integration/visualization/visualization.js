@@ -1,6 +1,6 @@
 $(document).ready(function () {
-  var Client = ot_client.Client;
-  var Server = ot_server.Server;
+  var Client = ot.Client;
+  var Server = ot.Server;
 
   // View
 
@@ -73,12 +73,11 @@ $(document).ready(function () {
       });
 
     var self = this;
-    this.server = new MyServer(str).appendTo(this.el);
-    this.server.addListener('newOperation', function (operation) {
+    this.server = new MyServer(str, function (operation) {
       self.server.appendToHistory(operation);
       self.aliceReceiveChannel.write(operation);
       self.bobReceiveChannel.write(operation);
-    });
+    }).appendTo(this.el);
     this.aliceSendChannel = new NetworkChannel(true, function (o) {
       self.server.receiveOperation(o);
     }).appendTo(this.el);
@@ -192,8 +191,9 @@ $(document).ready(function () {
 
   // MyServer
 
-  function MyServer (str) {
+  function MyServer (str, broadcast) {
     Server.call(this, str);
+    this.broadcast = broadcast;
     this.el = $('<div id="server" class="well" />');
     $('<h2 />').text("Server").appendTo(this.el);
     this.stateTable = $('<table class="table table-condensed table-noheader" />').html(

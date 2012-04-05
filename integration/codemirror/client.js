@@ -1,5 +1,5 @@
 (function () {
-  var Client = ot_client.Client;
+  var Client = ot.Client;
   var Operation = ot.Operation;
 
   var socket = io.connect('/');

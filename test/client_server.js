@@ -1,5 +1,5 @@
-var Client = require('../lib/client').Client;
-var Server = require('../lib/server').Server;
+var Client = require('../lib/client');
+var Server = require('../lib/server');
 var h = require('./helpers');
 
 function inherit (Const, Super) {
@@ -8,6 +8,14 @@ function inherit (Const, Super) {
   Const.prototype = new F();
   Const.prototype.constructor = Const;
 }
+
+
+function MyServer (str, broadcast) {
+  Server.call(this, str);
+  this.broadcast = broadcast;
+}
+
+inherit(MyServer, Server);
 
 
 function MyClient (str, revision, channel) {
@@ -57,7 +65,10 @@ NetworkChannel.prototype.receive = function () {
 
 function testClientServerInteraction () {
   var str = h.randomString();
-  var server = new Server(str);
+  var server = new MyServer(str, function (operation) {
+    client1ReceiveChannel.write(operation);
+    client2ReceiveChannel.write(operation);
+  });
   var client1SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
   var client1ReceiveChannel = new NetworkChannel(function (o) { client1.applyServer(o); });
   var client1 = new MyClient(str, 0, client1SendChannel);
@@ -65,11 +76,6 @@ function testClientServerInteraction () {
   var client2ReceiveChannel = new NetworkChannel(function (o) { client2.applyServer(o); });
   var client2 = new MyClient(str, 0, client2SendChannel);
   var channels = [client1SendChannel, client1ReceiveChannel, client2SendChannel, client2ReceiveChannel];
-
-  server.addListener('newOperation', function (operation) {
-    client1ReceiveChannel.write(operation);
-    client2ReceiveChannel.write(operation);
-  });
 
   function canReceive () {
     for (var i = 0; i < channels.length; i++) {

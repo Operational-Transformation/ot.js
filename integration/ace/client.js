@@ -71,7 +71,7 @@ window.onload = function () {
     }
   }
 
-  var Client = ot_client.Client;
+  var Client = ot.Client;
 
   var socket = io.connect('/');
   socket.on('doc', function (obj) {
@@ -113,7 +113,7 @@ window.onload = function () {
     });
 
     socket.on('operation', function (operation) {
-      operation = operational_transformation.Operation.fromJSON(operation);
+      operation = ot.Operation.fromJSON(operation);
       client.applyServer(operation);
     });
   }

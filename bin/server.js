@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-var ot = require('../lib/operational-transformation');
-var Server = require('../lib/server').Server;
+var Operation = require('../lib/operation');
+var Server = require('../lib/server');
 var express = require('express');
 var socketIO = require('socket.io');
 var path = require('path');
@@ -27,14 +27,14 @@ var str = "lorem ipsum\ndolor sit amet";
 
 var server = new Server(str);
 
-server.addListener('newOperation', function (operation) {
+server.broadcast = function (operation) {
   io.sockets.emit('operation', operation);
-});
+};
 
 io.sockets.on('connection', function (socket) {
   socket.emit('doc', { str: server.str, revision: server.operations.length });
   socket.on('operation', function (operation) {
-    operation = ot.Operation.fromJSON(operation);
+    operation = Operation.fromJSON(operation);
     server.receiveOperation(operation);
     console.log("new operation: " + operation);
   });
