@@ -25,6 +25,7 @@ io.configure('production', function () {
 
 var str = "lorem ipsum\ndolor sit amet";
 
+var users = {};
 var server = new Server(str);
 
 server.broadcast = function (operation) {
@@ -32,11 +33,33 @@ server.broadcast = function (operation) {
 };
 
 io.sockets.on('connection', function (socket) {
-  socket.emit('doc', { str: server.str, revision: server.operations.length });
-  socket.on('operation', function (operation) {
-    operation = Operation.fromJSON(operation);
-    server.receiveOperation(operation);
-    console.log("new operation: " + operation);
+  socket.once('auth', function (auth) {
+    socket.emit('doc', {
+      str: server.str,
+      revision: server.operations.length,
+      users: users
+    });
+
+    var name = auth.name; // TODO: validate uniqueness
+    users[name] = { cursor: 0 };
+
+    socket.broadcast.emit('user_joined', { name: name, cursor: 0 });
+    socket.on('operation', function (operation) {
+      operation = Operation.fromJSON(operation);
+      server.receiveOperation(operation);
+      console.log("new operation: " + operation);
+    });
+    socket.on('cursor', function (obj) {
+      users[name].cursor = obj.index;
+      obj.name = name;
+      socket.broadcast.emit('cursor', obj);
+    });
+    socket.on('disconnect', function () {
+      // TODO
+      console.log("Disconnect " + name);
+      delete users[name];
+      io.sockets.emit('user_left', { name: name });
+    });
   });
 });
 
