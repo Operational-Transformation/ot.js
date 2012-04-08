@@ -16,12 +16,15 @@
     // uncomment to simulate more latency
     /*(function () {
       var emit = socket.emit;
+      var queue = [];
       socket.emit = function () {
-        var args = arguments;
-        setTimeout(function () {
-          emit.apply(socket, args);
-        }, 800);
+        queue.push(arguments);
       };
+      setInterval(function () {
+        if (queue.length) {
+          emit.apply(socket, queue.shift());
+        }
+      }, 800);
     })();*/
 
     var client = new Client(revision);
@@ -81,20 +84,36 @@
         var operation = client.createOperation();
         operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
         console.log("onChange", change, operation);
+        if (cursorBuffer) {
+          operation.meta.index = cursorBuffer.index;
+          cursorBuffer = null;
+        }
         client.applyClient(operation);
       }
       oldValue = cm.getValue();
-      onCursorActivity(cm);
     }
+
+    var cursorBuffer = null;
 
     function onCursorActivity (cm) {
       var cursorPos = cm.getCursor();
-      console.log("onCursorActivity", cursorPos.line, cursorPos.ch);
       var index = cm.indexFromPos(cursorPos);
-      socket.emit('cursor', { index: index });
+      console.log("onCursorActivity", cursorPos, index);
+      if (client.state === 'awaitingWithBuffer') {
+        client.buffer.meta.index = index;
+      } else {
+        cursorBuffer = { index: index };
+        setTimeout(function () {
+          if (cursorBuffer) {
+            socket.emit('cursor', cursorBuffer);
+            cursorBuffer = null;
+          }
+        }, 1);
+      }
     }
 
     socket.on('operation', function (operation) {
+      console.log("Operation from server: ", operation);
       operation = Operation.fromJSON(operation);
       client.applyServer(operation);
     });
@@ -113,11 +132,11 @@
 
     socket.on('cursor', function (obj) {
       //console.log(obj);
+      console.log(obj.name + " moved his/her cursor: " + obj.index);
       users[obj.name].cursor = obj.index;
       updateUserElPosition(obj.name);
     });
 
-    console.log(users);
     for (var name in users) {
       if (users.hasOwnProperty(name)) {
         users[name].name = name;

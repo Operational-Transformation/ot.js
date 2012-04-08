@@ -48,11 +48,21 @@ io.sockets.on('connection', function (socket) {
       operation = Operation.fromJSON(operation);
       server.receiveOperation(operation);
       console.log("new operation: " + operation);
+      if (typeof operation.meta.index === 'number') {
+        updateCursor(operation.meta.index);
+      }
     });
+
+    function updateCursor (index) {
+      users[name].cursor = index;
+      socket.broadcast.emit('cursor', {
+        name: name,
+        index: index
+      });
+    }
+
     socket.on('cursor', function (obj) {
-      users[name].cursor = obj.index;
-      obj.name = name;
-      socket.broadcast.emit('cursor', obj);
+      updateCursor(obj.index);
     });
     socket.on('disconnect', function () {
       // TODO
