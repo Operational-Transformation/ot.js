@@ -46,11 +46,9 @@ io.sockets.on('connection', function (socket) {
     socket.broadcast.emit('user_joined', { name: name, cursor: 0 });
     socket.on('operation', function (operation) {
       operation = Operation.fromJSON(operation);
+      operation.meta.name = name;
       server.receiveOperation(operation);
       console.log("new operation: " + operation);
-      if (typeof operation.meta.index === 'number') {
-        updateCursor(operation.meta.index);
-      }
     });
 
     function updateCursor (index) {

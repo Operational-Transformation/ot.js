@@ -113,9 +113,12 @@
     }
 
     socket.on('operation', function (operation) {
-      console.log("Operation from server: ", operation);
+      console.log("Operation from server by user " + operation.meta.name + ":", operation);
       operation = Operation.fromJSON(operation);
       client.applyServer(operation);
+      if (typeof operation.meta.index === 'number' && operation.meta.name !== name) {
+        updateCursor(operation.meta);
+      }
     });
 
     socket.on('user_joined', function (info) {
@@ -130,18 +133,21 @@
       delete users[info.name];
     });
 
-    socket.on('cursor', function (obj) {
-      //console.log(obj);
+    socket.on('cursor', updateCursor);
+
+    function updateCursor (obj) {
       console.log(obj.name + " moved his/her cursor: " + obj.index);
       users[obj.name].cursor = obj.index;
       updateUserElPosition(obj.name);
-    });
-
-    for (var name in users) {
-      if (users.hasOwnProperty(name)) {
-        users[name].name = name;
-        initUser(name);
-      }
     }
+
+    (function () {
+      for (var name in users) {
+        if (users.hasOwnProperty(name)) {
+          users[name].name = name;
+          initUser(name);
+        }
+      }
+    })();
   }
 })();
