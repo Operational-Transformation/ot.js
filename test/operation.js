@@ -106,6 +106,7 @@ function testFromJSON () {
     revision: 3,
     baseLength: 4,
     targetLength: 5,
+    meta: { author: "Tim" },
     ops: [
       { retain: 2 },
       { delete: "a" },
@@ -116,6 +117,7 @@ function testFromJSON () {
   var o = Operation.fromJSON(obj);
   h.assertEqual('1234', o.id);
   h.assertEqual(3, o.revision);
+  h.assertEqual("Tim", o.meta.author);
   h.assertEqual(3, o.ops.length);
   h.assertEqual(4, o.baseLength);
   h.assertEqual(5, o.targetLength);
