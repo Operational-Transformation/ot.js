@@ -72,21 +72,27 @@
       lineNumbers: true,
       //mode: 'javascript',
       value: str,
-      onChange: function (cm, change) {
-        if (!fromServer) {
-          var operation = client.createOperation();
-          operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
-          console.log(change, operation);
-          client.applyClient(operation);
-        }
-        oldValue = cm.getValue();
-      },
-      onCursorActivity: function (cm) {
-        var cursorPos = cm.getCursor();
-        var index = cm.indexFromPos(cursorPos);
-        socket.emit('cursor', { index: index });
-      }
+      onChange: onChange,
+      onCursorActivity: onCursorActivity
     });
+
+    function onChange (cm, change) {
+      if (!fromServer) {
+        var operation = client.createOperation();
+        operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
+        console.log("onChange", change, operation);
+        client.applyClient(operation);
+      }
+      oldValue = cm.getValue();
+      onCursorActivity(cm);
+    }
+
+    function onCursorActivity (cm) {
+      var cursorPos = cm.getCursor();
+      console.log("onCursorActivity", cursorPos.line, cursorPos.ch);
+      var index = cm.indexFromPos(cursorPos);
+      socket.emit('cursor', { index: index });
+    }
 
     socket.on('operation', function (operation) {
       operation = Operation.fromJSON(operation);
