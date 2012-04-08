@@ -156,6 +156,7 @@ function testCompose () {
   var afterB = b.apply(afterA);
   h.assertEqual(b.targetLength, afterB.length);
   var ab = a.compose(b);
+  h.assertEqual(ab.meta, a.meta);
   h.assertEqual(ab.targetLength, b.targetLength);
   var afterAB = ab.apply(str);
   if (afterB !== afterAB) {
@@ -176,8 +177,10 @@ function testTransform () {
   var bPrime = abPrime[1];
   h.assertEqual(1, aPrime.revision);
   h.assertEqual(a.id, aPrime.id);
+  h.assertEqual(a.meta, aPrime.meta);
   h.assertEqual(1, bPrime.revision);
   h.assertEqual(b.id, bPrime.id);
+  h.assertEqual(b.meta, bPrime.meta);
   var abPrime = a.compose(bPrime);
   var baPrime = b.compose(aPrime);
   var afterAbPrime = abPrime.apply(str);
