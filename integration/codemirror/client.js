@@ -73,7 +73,7 @@
     var oldValue = str;
     var cm = window.cm = CodeMirror(wrapper, {
       lineNumbers: true,
-      //mode: 'javascript',
+      mode: 'javascript',
       value: str,
       onChange: onChange,
       onCursorActivity: onCursorActivity
