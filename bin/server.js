@@ -47,6 +47,9 @@ io.sockets.on('connection', function (socket) {
     socket.on('operation', function (operation) {
       operation = Operation.fromJSON(operation);
       operation.meta.name = name;
+      if (typeof operation.meta.index === 'number') {
+        users[name].cursor = operation.meta.index;
+      }
       server.receiveOperation(operation);
       console.log("new operation: " + operation);
     });
