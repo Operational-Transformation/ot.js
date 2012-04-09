@@ -50,7 +50,7 @@
       onChange: function (_, change) {
         var operation = new ot.Operation(0);
         operation = codeMirrorChangeToOperation(operation, cm1, change, oldValue);
-        console.log(change, operation);
+        //console.log(change, operation);
         codeMirrorApplyOperation(cm2, operation);
         oldValue = cm1.getValue();
       }
@@ -60,7 +60,7 @@
       value: str
     });
 
-    var n = 50;
+    var n = 100;
     while (n--) {
       randomOperation(cm1);
       var v1 = cm1.getValue();
