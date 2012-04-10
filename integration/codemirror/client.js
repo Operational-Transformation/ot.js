@@ -130,10 +130,10 @@
       console.log("onCursorActivity", cursorPos, cursorIndex);
       if (client.state === 'awaitingWithBuffer') {
         client.buffer.meta.index = cursorIndex;
-        if (otherIndex) { client.buffer.meta.otherIndex = otherIndex; }
+        if (typeof otherIndex === 'number') { client.buffer.meta.otherIndex = otherIndex; }
       } else {
         cursorBuffer = { index: cursorIndex };
-        if (otherIndex) { cursorBuffer.otherIndex = otherIndex; }
+        if (typeof otherIndex === 'number') { cursorBuffer.otherIndex = otherIndex; }
         setTimeout(function () {
           if (cursorBuffer) {
             socket.emit('cursor', cursorBuffer);
