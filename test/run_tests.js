@@ -8,8 +8,8 @@ var server_tests = require('./lib/server');
 var client_server_tests = require('./lib/client_server');
 
 function isPhantomJSInstalled (cb) {
-  child_process.exec('which phantomjs', function (code) {
-    cb(code === 0);
+  child_process.exec('which phantomjs', function (err) {
+    cb(!err);
   });
 }
 
