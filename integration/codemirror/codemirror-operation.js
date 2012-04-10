@@ -73,27 +73,6 @@ function codeMirrorChangeToOperation (operation, cm, change, oldValue) {
   return operation;
 }
 
-/*
-function codeMirrorChangeToOperation (operation, cm, change, oldValue) {
-  var newValue = cm.getValue();
-  var from = cm.indexFromPos(change.from);
-  var text = change.text.join('\n');
-  var diff = newValue.length - oldValue.length;
-  var deletedChars = text.length - diff;
-
-  operation.retain(from);
-  if (deletedChars > 0) {
-    operation.delete(oldValue.slice(from, from + deletedChars));
-  }
-  operation.insert(text);
-  if (oldValue.length - operation.baseLength > 0) {
-    operation.retain(oldValue.length - operation.baseLength);
-  }
-
-  return operation;
-}
-*/
-
 function codeMirrorApplyOperation (cm, operation) {
   cm.operation(function () {
     var ops = operation.ops;
