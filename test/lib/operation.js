@@ -1,4 +1,4 @@
-var Operation = require('../lib/operation');
+var Operation = require('../../lib/operation');
 var h = require('./helpers');
 
 function testIDGeneration () {

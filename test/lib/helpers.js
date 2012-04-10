@@ -1,4 +1,4 @@
-var Operation = require('../lib/operation');
+var Operation = require('../../lib/operation');
 
 function randomInt (n) {
   return Math.floor(Math.random() * n);

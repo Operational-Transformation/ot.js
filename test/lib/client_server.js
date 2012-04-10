@@ -1,5 +1,5 @@
-var Client = require('../lib/client');
-var Server = require('../lib/server');
+var Client = require('../../lib/client');
+var Server = require('../../lib/server');
 var h = require('./helpers');
 
 function inherit (Const, Super) {
