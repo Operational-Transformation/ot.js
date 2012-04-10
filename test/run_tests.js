@@ -20,10 +20,11 @@ function runPhantomJSTests () {
       return;
     }
 
-    require('../bin/server'); // Start server
+    var serverProcess = child_process.spawn('bin/server.js');
     setTimeout(function () {
       var cmd = 'phantomjs test/phantomjs/codemirror-integration.js';
       child_process.exec(cmd, function (err, stdout) {
+        serverProcess.kill();
         if (err) {
           throw new Error('PhantomJS test failed:\n' + stdout.toString());
         }
