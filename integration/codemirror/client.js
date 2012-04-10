@@ -53,9 +53,26 @@
       cm.addWidget(pos, el, false);
     }
 
+    function updateUserMark (name) {
+      var userInfo = users[name];
+      if (userInfo.mark) {
+        userInfo.mark.clear();
+      }
+      if (typeof userInfo.otherCursor === 'number') {
+        var from = Math.min(userInfo.cursor, userInfo.otherCursor);
+        var to   = Math.max(userInfo.cursor, userInfo.otherCursor);
+        var fromPos = cm.posFromIndex(from);
+        var toPos   = cm.posFromIndex(to);
+        userInfo.mark = cm.markText(fromPos, toPos, 'other-user-selection');
+      } else {
+        delete userInfo.mark;
+      }
+    }
+
     function initUser (name) {
       users[name].el = createUserEl(name);
       updateUserElPosition(name);
+      updateUserMark(name);
     }
 
     client.sendOperation = function (operation) {
@@ -96,13 +113,27 @@
     var cursorBuffer = null;
 
     function onCursorActivity (cm) {
+      function eqPos (a, b) {
+        return a.line === b.line && a.ch === b.ch;
+      }
+
       var cursorPos = cm.getCursor();
-      var index = cm.indexFromPos(cursorPos);
-      console.log("onCursorActivity", cursorPos, index);
+      var cursorIndex = cm.indexFromPos(cursorPos);
+      if (cm.somethingSelected()) {
+        var startPos = cm.getCursor(true);
+        var otherPos = eqPos(cursorPos, startPos)
+                     ? cm.getCursor(false)
+                     : startPos;
+        var otherIndex = cm.indexFromPos(otherPos);
+      }
+
+      console.log("onCursorActivity", cursorPos, cursorIndex);
       if (client.state === 'awaitingWithBuffer') {
-        client.buffer.meta.index = index;
+        client.buffer.meta.index = cursorIndex;
+        if (otherIndex) { client.buffer.meta.otherIndex = otherIndex; }
       } else {
-        cursorBuffer = { index: index };
+        cursorBuffer = { index: cursorIndex };
+        if (otherIndex) { cursorBuffer.otherIndex = otherIndex; }
         setTimeout(function () {
           if (cursorBuffer) {
             socket.emit('cursor', cursorBuffer);
@@ -138,7 +169,9 @@
     function updateCursor (obj) {
       console.log(obj.name + " moved his/her cursor: " + obj.index);
       users[obj.name].cursor = obj.index;
+      users[obj.name].otherCursor = obj.otherIndex;
       updateUserElPosition(obj.name);
+      updateUserMark(obj.name);
     }
 
     (function () {

@@ -49,21 +49,24 @@ io.sockets.on('connection', function (socket) {
       operation.meta.name = name;
       if (typeof operation.meta.index === 'number') {
         users[name].cursor = operation.meta.index;
+        users[name].otherCursor = operation.meta.otherIndex;
       }
       server.receiveOperation(operation);
       console.log("new operation: " + operation);
     });
 
-    function updateCursor (index) {
+    function updateCursor (index, otherIndex) {
       users[name].cursor = index;
+      users[name].otherCursor = otherIndex;
       socket.broadcast.emit('cursor', {
         name: name,
-        index: index
+        index: index,
+        otherIndex: otherIndex
       });
     }
 
     socket.on('cursor', function (obj) {
-      updateCursor(obj.index);
+      updateCursor(obj.index, obj.otherIndex);
     });
     socket.on('disconnect', function () {
       // TODO
