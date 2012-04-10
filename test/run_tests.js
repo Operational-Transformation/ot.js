@@ -23,8 +23,8 @@ function runPhantomJSTests () {
     require('../bin/server'); // Start server
     setTimeout(function () {
       var cmd = 'phantomjs test/phantomjs/codemirror-integration.js';
-      child_process.exec(cmd, function (code, stdout) {
-        if (code !== 0) {
+      child_process.exec(cmd, function (err, stdout) {
+        if (err) {
           throw new Error('PhantomJS test failed:\n' + stdout.toString());
         }
       });
