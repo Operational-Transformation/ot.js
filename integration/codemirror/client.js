@@ -90,7 +90,8 @@
     var oldValue = str;
     var cm = window.cm = CodeMirror(wrapper, {
       lineNumbers: true,
-      mode: 'javascript',
+      lineWrapping: true,
+      mode: 'markdown',
       value: str,
       onChange: onChange,
       onCursorActivity: onCursorActivity
