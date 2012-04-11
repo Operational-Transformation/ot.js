@@ -45,14 +45,22 @@ io.sockets.on('connection', function (socket) {
 
     socket.broadcast.emit('user_joined', { name: name, cursor: 0 });
     socket.on('operation', function (operation) {
-      operation = Operation.fromJSON(operation);
+      try {
+        operation = Operation.fromJSON(operation);
+      } catch (exc) {
+        console.error("Invalid operation received: " + exc);
+      }
       operation.meta.name = name;
       if (typeof operation.meta.index === 'number') {
         users[name].cursor = operation.meta.index;
         users[name].otherCursor = operation.meta.otherIndex;
       }
-      server.receiveOperation(operation);
-      console.log("new operation: " + operation);
+      try {
+        server.receiveOperation(operation);
+        console.log("new operation: " + operation);
+      } catch (exc) {
+        console.error(exc);
+      }
     });
 
     function updateCursor (index, otherIndex) {
@@ -80,4 +88,8 @@ io.sockets.on('connection', function (socket) {
 var port = process.env.PORT || 3000;
 app.listen(port, function () {
   console.log("Listening on port " + port);
+});
+
+process.on('uncaughtException', function (exc) {
+  console.error(exc);
 });
