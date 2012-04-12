@@ -82,7 +82,7 @@
     var fromServer = false;
     client.applyOperation = function (operation) {
       fromServer = true;
-      codeMirrorApplyOperation(cm, operation);
+      operation.applyToCodeMirror(cm);
       fromServer = false;
     };
 
@@ -99,8 +99,7 @@
 
     function onChange (cm, change) {
       if (!fromServer) {
-        var operation = client.createOperation();
-        operation = codeMirrorChangeToOperation(operation, cm, change, oldValue);
+        var operation = client.createOperation().fromCodeMirrorChange(change, oldValue);
         console.log("onChange", change, operation);
         if (cursorBuffer) {
           operation.meta.index = cursorBuffer.index;

@@ -253,8 +253,7 @@ $(document).ready(function () {
       value: str,
       onChange: function (cm, change) {
         if (!self.fromServer) {
-          var operation = self.createOperation();
-          operation = codeMirrorChangeToOperation(operation, cm, change, self.oldValue);
+          var operation = self.createOperation().fromCodeMirrorChange(change, self.oldValue);
           console.log(change, operation);
           self.applyClient(operation);
         }
@@ -275,7 +274,7 @@ $(document).ready(function () {
 
   MyClient.prototype.applyOperation = function (operation) {
     this.fromServer = true;
-    codeMirrorApplyOperation(this.cm, operation);
+    operation.applyToCodeMirror(this.cm);
     this.fromServer = false;
   };
 

@@ -48,10 +48,9 @@
     var cm1 = CodeMirror(document.body, {
       value: str,
       onChange: function (_, change) {
-        var operation = new ot.Operation(0);
-        operation = codeMirrorChangeToOperation(operation, cm1, change, oldValue);
+        var operation = new ot.Operation(0).fromCodeMirrorChange(change, oldValue);
         //console.log(change, operation);
-        codeMirrorApplyOperation(cm2, operation);
+        operation.applyToCodeMirror(cm2);
         oldValue = cm1.getValue();
       }
     });
