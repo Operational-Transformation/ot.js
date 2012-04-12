@@ -38,22 +38,21 @@ $(document).ready(function () {
     return html;
   }
 
-  function operationPopoverContent (operation, author) {
-    var info = operationInfo[operation.id];
+  function operationPopoverContent (operation) {
     return function () {
       return '<table class="table table-condensed table-noheader">'
-           + tr("Author", author || info.creator)
+           + tr("Author", operation.meta.creator)
            + tr("Revision", operation.revision)
            + tr("Changeset", operationToHtml(operation))
            + '</table>';
     };
   }
 
-  function createOperationElement (creator, id) {
+  function createOperationElement (operation) {
     return $('<span class="operation" title="Operation" />')
-      .addClass('operation' + id)
-      .attr({ 'data-operation-id': id })
-      .addClass(creator.toLowerCase());
+      .addClass('operation' + operation.id)
+      .attr({ 'data-operation-id': operation.id })
+      .addClass(operation.meta.creator.toLowerCase());
   }
 
 
@@ -112,11 +111,6 @@ $(document).ready(function () {
   };
 
 
-  // Information for operations
-
-  var operationInfo = {};
-
-
   // Network channel
 
   function NetworkChannel (up, onReceive) {
@@ -150,7 +144,7 @@ $(document).ready(function () {
   NetworkChannel.prototype.createElement = function (operation) {
     var self = this;
     async(function () { self.distributeElements(); });
-    return createOperationElement(operationInfo[operation.id].creator, operation.id)
+    return createOperationElement(operation)
       .popover({ content: operationPopoverContent(operation) })
       .css(this.up ? { top: '150px' } : { top: '-24px' })
       .appendTo(this.el);
@@ -215,7 +209,7 @@ $(document).ready(function () {
     this.$('.server-history td')
       .append(document.createTextNode(" "))
       .append(
-        createOperationElement(operationInfo[operation.id].creator, operation.id)
+        createOperationElement(operation)
           .popover({ content: operationPopoverContent(operation) })
       );
   };
@@ -237,7 +231,7 @@ $(document).ready(function () {
         selector: '.operation',
         content: function () {
           if ($(this).hasClass('buffer')) {
-            return operationPopoverContent(self.buffer, self.name)();
+            return operationPopoverContent(self.buffer)();
           } else {
             return operationPopoverContent(self.outstanding)();
           }
@@ -254,6 +248,7 @@ $(document).ready(function () {
       onChange: function (cm, change) {
         if (!self.fromServer) {
           var operation = self.createOperation().fromCodeMirrorChange(change, self.oldValue);
+          operation.meta.creator = self.name;
           console.log(change, operation);
           self.applyClient(operation);
         }
@@ -266,9 +261,6 @@ $(document).ready(function () {
   extend(MyClient.prototype, View);
 
   MyClient.prototype.sendOperation = function (operation) {
-    operationInfo[operation.id] = {
-      creator: this.name
-    };
     this.channel.write(operation);
   };
 
@@ -309,13 +301,13 @@ $(document).ready(function () {
       var self = this;
       $('> span', this.stateEl)
         .text("Awaiting ")
-        .append(createOperationElement(this.name, this.outstanding.id).addClass('outstanding'))
+        .append(createOperationElement(this.outstanding).addClass('outstanding'))
         .append(document.createTextNode(" "));
     },
     'awaitingConfirm->awaitingWithBuffer': function () {
       var self = this;
       $('<span>with buffer </span>')
-        .append(createOperationElement(this.name, this.buffer.id).addClass('buffer'))
+        .append(createOperationElement(this.buffer).addClass('buffer'))
         .fadeIn()
         .appendTo(this.stateEl);
     },
@@ -324,7 +316,7 @@ $(document).ready(function () {
       hideSpan(spans.eq(0));
       spans.get(1).firstChild.data = "Awaiting ";
       spans.eq(1).append(document.createTextNode(" "));
-      createOperationElement(this.name, this.outstanding.id)
+      createOperationElement(this.outstanding)
         .addClass('outstanding')
         .replaceAll($('.operation', this.stateEl).eq(1));
     },
