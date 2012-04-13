@@ -6,22 +6,8 @@
   <title>Collaborative editing with CodeMirror</title>
   <link rel="stylesheet" href="/bootstrap/css/bootstrap.min.css" />
   <link rel="stylesheet" href="/codemirror/codemirror/lib/codemirror.css" />
-  <link rel="stylesheet" href="/codemirror/codemirror/mode/markdown/markdown.css"></script>
   <link rel="stylesheet" href="/styles.css" />
-  <style>
-    .other-user {
-      position: absolute;
-      background: #aaa;
-      width: auto;
-    }
-    .other-user pre {
-      border-left: 1px solid #aaa;
-      position: absolute; bottom: 100%;
-    }
-    .other-user-selection {
-      background: rgba(200, 200, 200, 0.4);
-    }
-  </style>
+  <link rel="stylesheet" href="/codemirror-client.css" />
 </head>
 
 <body>
@@ -36,6 +22,7 @@
   <script src="/client.js"></script>
   <script src="/socket.io/socket.io.js"></script>
   <script src="/codemirror-operation.js"></script>
+  <script src="/codemirror-client.js"></script>
   <script src="/codemirror/client.js"></script>
 </body>
 

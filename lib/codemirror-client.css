@@ -1,0 +1,12 @@
+.other-user {
+  position: absolute;
+  background: #aaa;
+  width: auto;
+}
+.other-user pre {
+  border-left: 1px solid #aaa;
+  position: absolute; bottom: 100%;
+}
+.other-user-selection {
+  background: rgba(200, 200, 200, 0.4);
+}
