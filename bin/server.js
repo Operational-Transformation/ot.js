@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 var Operation = require('../lib/operation');
-var Server = require('../lib/server');
+var CodeMirrorServer = require('../lib/codemirror-server');
 var express = require('express');
 var socketIO = require('socket.io');
 var path = require('path');
@@ -24,66 +24,7 @@ io.configure('production', function () {
 });
 
 var str = "lorem ipsum\ndolor sit amet";
-
-var users = {};
-var server = new Server(str);
-
-server.broadcast = function (operation) {
-  io.sockets.emit('operation', operation);
-};
-
-io.sockets.on('connection', function (socket) {
-  socket.once('auth', function (auth) {
-    socket.emit('doc', {
-      str: server.str,
-      revision: server.operations.length,
-      users: users
-    });
-
-    var name = auth.name; // TODO: validate uniqueness
-    users[name] = { cursor: 0 };
-
-    socket.broadcast.emit('user_joined', { name: name, cursor: 0 });
-    socket.on('operation', function (operation) {
-      try {
-        operation = Operation.fromJSON(operation);
-      } catch (exc) {
-        console.error("Invalid operation received: " + exc);
-      }
-      operation.meta.name = name;
-      if (typeof operation.meta.index === 'number') {
-        users[name].cursor = operation.meta.index;
-        users[name].otherCursor = operation.meta.otherIndex;
-      }
-      try {
-        server.receiveOperation(operation);
-        console.log("new operation: " + operation);
-      } catch (exc) {
-        console.error(exc);
-      }
-    });
-
-    function updateCursor (index, otherIndex) {
-      users[name].cursor = index;
-      users[name].otherCursor = otherIndex;
-      socket.broadcast.emit('cursor', {
-        name: name,
-        index: index,
-        otherIndex: otherIndex
-      });
-    }
-
-    socket.on('cursor', function (obj) {
-      updateCursor(obj.index, obj.otherIndex);
-    });
-    socket.on('disconnect', function () {
-      // TODO
-      console.log("Disconnect " + name);
-      delete users[name];
-      io.sockets.emit('user_left', { name: name });
-    });
-  });
-});
+var server = new CodeMirrorServer(str, io.sockets);
 
 var port = process.env.PORT || 3000;
 app.listen(port, function () {
