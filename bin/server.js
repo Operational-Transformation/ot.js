@@ -23,7 +23,12 @@ io.configure('production', function () {
   io.set('polling duration', 10); 
 });
 
-var str = "lorem ipsum\ndolor sit amet";
+var str = "# This is a Markdown heading\n\n"
+        + "1. un\n"
+        + "2. deux\n"
+        + "3. trois\n\n"
+        + "Lorem *ipsum* dolor **sit** amet.\n\n"
+        + "    $ touch test.txt";
 var server = new CodeMirrorServer(str, io.sockets);
 
 var port = process.env.PORT || 3000;
