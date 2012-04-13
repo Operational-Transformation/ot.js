@@ -29,7 +29,7 @@
       lineNumbers: true,
       lineWrapping: true,
       mode: 'markdown',
-      value: str,
+      value: str
     });
 
     var cmClient = new CodeMirrorClient(revision, cm, socket, name, users);
