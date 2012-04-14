@@ -10,7 +10,7 @@ var app = express.createServer();
 
 app.configure(function () {
   app.use(express.logger());
-  app.use(express.static(path.join(__dirname, '../integration')));
+  app.use(express.static(path.join(__dirname, '../public')));
   app.use(express.static(path.join(__dirname, '../lib')));
   app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
 });
