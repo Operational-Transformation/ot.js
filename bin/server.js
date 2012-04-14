@@ -29,7 +29,9 @@ var str = "# This is a Markdown heading\n\n"
         + "3. trois\n\n"
         + "Lorem *ipsum* dolor **sit** amet.\n\n"
         + "    $ touch test.txt";
-var server = new CodeMirrorServer(str, io.sockets);
+var server = new CodeMirrorServer(str, io.sockets, [], function (socket, cb) {
+    socket.once('auth', function (auth) { cb(auth.name); });
+});
 
 var port = process.env.PORT || 3000;
 app.listen(port, function () {
