@@ -134,6 +134,20 @@ We need a way to apply operationB to strA and operationA to operationA to strB s
     var strABPrime = operationAPrime.apply(strB); // "ipsum dolor"
     var strBAPrime = operationBPrime.apply(strA); // "ipsum dolor"
 
+There is one additional method available on operations: ``invert`` returns a new operation that reverts all changes of a given operation. For example:
+
+.. code-block:: javascript
+
+    var str = "lorem ipsum";
+    var operation = new ot.Operation(0)
+      .delete("lorem ")
+      .retain(5);
+    operation.apply(str); // => "ipsum"
+    var inverse = operation.invert();
+    inverse.apply(operation.apply(str)); // => "lorem ipsum"
+
+This function comes in handy when implementing undo and redo stacks.
+
 
 CodeMirror integration
 ----------------------
