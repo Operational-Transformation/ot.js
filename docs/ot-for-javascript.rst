@@ -135,6 +135,41 @@ We need a way to apply operationB to strA and operationA to operationA to strB s
     var strBAPrime = operationBPrime.apply(strA); // "ipsum dolor"
 
 
+CodeMirror integration
+----------------------
+
+Although this library can be extended to work with other editors like ACE from Cloud9 or simple textarea elements, it is intended to be used together with `CodeMirror <https://codemirror.net/>`_. You can can listen for changes on the CodeMirror instance and convert them like this:
+
+.. code-block:: javascript
+
+    var oldValue = "lorem ipsum\ndolor sit amet";
+    var n = 0;
+    var wrapper = document.getElementById('wrapper');
+    var cm = CodeMirror(wrapper, {
+      value: oldValue,
+      onChange: function (cm, change) {
+        var operation = new ot.Operation(n++).fromCodeMirrorChange(change, oldValue);
+        // do something with the operation here, like logging it
+        // or sending it to the server
+        oldValue = cm.getValue();
+      }
+    });
+
+You have to call the method ``fromCodeMirrorChange`` with a `CodeMirror change object <http://codemirror.net/doc/manual.html#option_onChange>`_ and the value of the editor *before* the change. This is necessary to store the deleted characters if characters were deleted.
+
+The method ``applyToCodeMirror`` applies an operation to a CodeMirror instance. Theoretically, it is not strictly necessary, because you could simply get the current value from the editor, apply the operation and set the new value. However, this approach has several disadvantages. Firstly, CodeMirror needs to rebuild it's internal datastructures, a substantial amount of CodeMirror's DOM tree needs to be rerendered and syntax highlighting needs to start from the beginning of the document. Secondly, the user's current cursor position is lost. Here's how you can use it:
+
+.. code-block:: javascript
+
+  var operation = new ot.Operation(0)
+    .retain(6)
+    .delete(" ipsum")
+    .retain(15);
+  operation.applyToCodeMirror(cm);
+
+A call to this method will trigger the ``onChange`` callback. Therefore you have to be careful not to create infinite loops by applying an operation received from the server and sending it back to the server as if it was a change that the user has made.
+
+
 Feedback and questions
 ----------------------
 
