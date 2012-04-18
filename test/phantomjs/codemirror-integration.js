@@ -6,7 +6,7 @@ page.onError = function (msg, trace) {
   phantom.exit(1);
 };
 
-page.open('http://localhost:3000/codemirror/test.html', function (status) {
+page.open('http://localhost:3000/test.html', function (status) {
   //console.log(status);
   phantom.exit(0);
 });
