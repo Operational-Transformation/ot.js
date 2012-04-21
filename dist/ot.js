@@ -785,6 +785,7 @@ if (typeof module === 'object') {
 
     this.initializeSocket();
     this.initializeCodeMirror();
+    this.userListEl = document.createElement('ul');
     this.initializeUsers();
     this.onCodeMirrorCursorActivity();
   }
@@ -838,7 +839,10 @@ if (typeof module === 'object') {
 
   CodeMirrorClient.prototype.onUserLeft = function (user) {
     console.log("User disconnected: " + user.name);
-    removeElement(this.users[user.name].el);
+    user = this.users[user.name];
+    removeElement(user.li);
+    removeElement(user.el);
+    if (user.mark) { user.mark.clear(); }
     delete this.users[user.name];
   };
 
@@ -872,10 +876,60 @@ if (typeof module === 'object') {
     }
   };
 
+  function rgb2hex (r, g, b) {
+    function digits (n) {
+      var m = Math.round(255*n).toString(16);
+      return m.length === 1 ? '0'+m : m;
+    }
+    return '#' + digits(r) + digits(g) + digits(b);
+  }
+
+  function hsl2hex (h, s, l) {
+    if (s === 0) { return rgb2hex(l, l, l); }
+    var var2 = l < 0.5 ? l * (1+s) : (l+s) - (s*l);
+    var var1 = 2 * l - var2;
+    var hue2rgb = function (hue) {
+      if (hue < 0) { hue += 1; }
+      if (hue > 1) { hue -= 1; }
+      if (6*hue < 1) { return var1 + (var2-var1)*6*hue; }
+      if (2*hue < 1) { return var2; }
+      if (3*hue < 2) { return var1 + (var2-var1)*6*(2/3 - hue); }
+      return var1;
+    };
+    return rgb2hex(hue2rgb(h+1/3), hue2rgb(h), hue2rgb(h-1/3));
+  }
+
   CodeMirrorClient.prototype.initializeUser = function (user) {
-    user.el = createUserElement(user.name);
+    user.hue = Math.random();
+    user.color = hsl2hex(user.hue, 0.75, 0.5);
+    user.lightColor = hsl2hex(user.hue, 0.5, 0.9);
+    user.el = createUserElement(user);
+
+    user.li = document.createElement('li');
+    user.li.style.color = user.color;
+    user.li.appendChild(document.createTextNode(user.name));
+    this.userListEl.appendChild(user.li);
+
+    this.createUserSelectionStyleRule(user);
     this.updateUserElementPosition(user);
     this.updateUserMark(user);
+  };
+
+  function randomInt (n) {
+    return Math.floor(Math.random() * n);
+  }
+
+  CodeMirrorClient.prototype.createUserSelectionStyleRule = function (user) {
+    user.selectionClassName = 'user-selection-' + randomInt(1e6);
+    var selector = '.' + user.selectionClassName;
+    var styles = 'background:' + user.lightColor + ';';
+    var rule = selector + '{' + styles + '}';
+    try {
+      var styleSheet = document.styleSheets.item(0);
+      styleSheet.insertRule(rule, styleSheet.rules.length);
+    } catch (exc) {
+      console.error("Couldn't add style rule for user selections.", exc);
+    }
   };
 
   function cleanNoops (stack) {
@@ -920,11 +974,10 @@ if (typeof module === 'object') {
     operation.revision = this.createOperation().revision;
     this.unredo = true;
     operation.applyToCodeMirror(this.cm);
+    this.cursor = this.selectionEnd = cursorIndexAfterOperation(operation);
+    this.cm.setCursor(this.cm.posFromIndex(this.cursor));
     this.applyClient(operation);
     targetStack.push(operation.invert());
-
-    var cursorPos = this.cm.posFromIndex(cursorIndexAfterOperation(operation));
-    this.cm.setCursor(cursorPos);
   };
 
   CodeMirrorClient.prototype.transformUnredoStack = function (stack, operation) {
@@ -1025,7 +1078,7 @@ if (typeof module === 'object') {
       var to   = Math.max(user.cursor, user.selectionEnd);
       var fromPos = cm.posFromIndex(from);
       var toPos   = cm.posFromIndex(to);
-      user.mark = this.cm.markText(fromPos, toPos, 'other-user-selection');
+      user.mark = this.cm.markText(fromPos, toPos, user.selectionClassName);
     }
   };
 
@@ -1089,13 +1142,14 @@ if (typeof module === 'object') {
     operation.applyToCodeMirror(this.cm);
   };
   
-  function createUserElement (name) {
+  function createUserElement (user) {
     var el = document.createElement('div');
     el.className = 'other-user';
     var pre = document.createElement('pre');
+    pre.style.borderLeftColor = user.color;
     pre.innerHTML = '&nbsp;';
     el.appendChild(pre);
-    el.appendChild(document.createTextNode(name));
+    //el.appendChild(document.createTextNode(user.name));
     return el;
   }
 
