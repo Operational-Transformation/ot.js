@@ -1169,13 +1169,13 @@ if (typeof module === 'object') {
   };
 
   CodeMirrorClient.prototype.applyOperation = function (operation) {
+    this.fromServer = true;
+    operation.applyToCodeMirror(this.cm);
+
     var meta = operation.meta;
     this.updateClientCursor(meta.clientId, meta.cursor, meta.selectionEnd);
     this.transformUnredoStack(this.undoStack, operation);
     this.transformUnredoStack(this.redoStack, operation);
-    
-    this.fromServer = true;
-    operation.applyToCodeMirror(this.cm);
   };
 
   // Set Const.prototype.__proto__ to Super.prototype
