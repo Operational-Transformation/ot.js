@@ -797,15 +797,7 @@ if (typeof module === 'object') {
   };
 
   CodeMirrorClient.prototype.applyServer = function (operation) {
-    var isOutstandingOperation = this.outstanding && this.outstanding.id === operation.id;
     Client.prototype.applyServer.call(this, operation);
-
-    if (!isOutstandingOperation) {
-      var meta = operation.meta;
-      this.updateClientCursor(meta.clientId, meta.cursor, meta.selectionEnd);
-      this.transformUnredoStack(this.undoStack, operation);
-      this.transformUnredoStack(this.redoStack, operation);
-    }
   };
 
   CodeMirrorClient.prototype.initializeSocket = function () {
@@ -1177,6 +1169,11 @@ if (typeof module === 'object') {
   };
 
   CodeMirrorClient.prototype.applyOperation = function (operation) {
+    var meta = operation.meta;
+    this.updateClientCursor(meta.clientId, meta.cursor, meta.selectionEnd);
+    this.transformUnredoStack(this.undoStack, operation);
+    this.transformUnredoStack(this.redoStack, operation);
+    
     this.fromServer = true;
     operation.applyToCodeMirror(this.cm);
   };
