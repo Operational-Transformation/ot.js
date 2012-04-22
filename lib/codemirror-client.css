@@ -1,9 +1,8 @@
-.other-user {
+.other-client {
   position: absolute;
-  background: #aaa;
-  width: auto;
 }
-.other-user pre {
-  border-left: 1px solid #aaa;
+.other-client pre {
+  border-left-width: 2px;
+  border-left-style: solid;
   position: absolute; bottom: 100%;
 }

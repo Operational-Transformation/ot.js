@@ -768,26 +768,23 @@ if (typeof module === 'object') {
   var Client = ot.Client;
   var Operation = ot.Operation;
 
-  function CodeMirrorClient (revision, cm, socket, name, users) {
-    Client.call(this, revision);
-
-    this.cm = cm;
+  function CodeMirrorClient (socket, cm) {
     this.socket = socket;
-    this.name = name;
-    this.users = users || {};
-
+    this.cm = cm;
     this.fromServer = false;
-    this.oldValue = cm.getValue();
-
     this.unredo = false;
     this.undoStack = [];
     this.redoStack = [];
+    this.clients = {};
+    this.initializeClientList();
 
-    this.initializeSocket();
-    this.initializeCodeMirror();
-    this.userListEl = document.createElement('ul');
-    this.initializeUsers();
-    this.onCodeMirrorCursorActivity();
+    var self = this;
+    socket.on('doc', function (obj) {
+      Client.call(self, obj.revision);
+      self.initializeCodeMirror(obj.str);
+      self.initializeSocket();
+      self.initializeClients(obj.clients);
+    });
   }
 
   inherit(CodeMirrorClient, Client);
@@ -805,7 +802,7 @@ if (typeof module === 'object') {
 
     if (!isOutstandingOperation) {
       var meta = operation.meta;
-      this.updateUserCursor(meta.name, meta.cursor, meta.selectionEnd);
+      this.updateClientCursor(meta.clientId, meta.cursor, meta.selectionEnd);
       this.transformUnredoStack(this.undoStack, operation);
       this.transformUnredoStack(this.redoStack, operation);
     }
@@ -815,40 +812,58 @@ if (typeof module === 'object') {
     var self = this;
 
     this.socket
-      .on('user_joined', function (info) {
-        self.onUserJoined(info);
+      .on('client_left', function (obj) {
+        self.onClientLeft(obj.clientId);
       })
-      .on('user_left', function (info) {
-        self.onUserLeft(info);
+      .on('set_name', function (obj) {
+        self.onSetName(obj.clientId, obj.name);
       })
       .on('operation', function (operationObj) {
         var operation = Operation.fromJSON(operationObj);
-        console.log("Operation from server by user " + operation.meta.name + ":", operation);
+        console.log("Operation from server by client " + operation.meta.clientId + ":", operation);
         self.applyServer(operation);
       })
       .on('cursor', function (update) {
-        self.updateUserCursor(update.name, update.cursor, update.selectionEnd);
+        self.updateClientCursor(update.clientId, update.cursor, update.selectionEnd);
       });
   };
 
-  CodeMirrorClient.prototype.onUserJoined = function (user) {
-    console.log("User joined: ", user);
-    this.users[user.name] = user;
-    this.initializeUser(user);
+  CodeMirrorClient.prototype.getClientObject = function (clientId) {
+    var client = this.clients[clientId];
+    if (client) { return client; }
+    client = this.clients[clientId] = { clientId: clientId };
+    this.initializeClient(client);
+    return client;
   };
 
-  CodeMirrorClient.prototype.onUserLeft = function (user) {
-    console.log("User disconnected: " + user.name);
-    user = this.users[user.name];
-    removeElement(user.li);
-    removeElement(user.el);
-    if (user.mark) { user.mark.clear(); }
-    delete this.users[user.name];
+  CodeMirrorClient.prototype.onClientLeft = function (clientId) {
+    console.log("User disconnected: " + clientId);
+    var client = this.clients[clientId];
+    if (!client) { return; }
+    if (client.li) { removeElement(client.li); }
+    if (client.cursorEl) { removeElement(client.cursorEl); }
+    if (client.mark) { client.mark.clear(); }
+    delete this.clients[clientId];
   };
 
-  CodeMirrorClient.prototype.initializeCodeMirror = function () {
+  CodeMirrorClient.prototype.onSetName = function (clientId, name) {
+    var client = this.getClientObject(clientId);
+    client.name = name;
+    var oldLi = client.li;
+    var newLi = client.li = this.createClientListItem(client);
+    if (oldLi) {
+      this.clientListEl.replaceChild(newLi, oldLi);
+    } else {
+      this.clientListEl.appendChild(newLi);
+    }
+  };
+
+  CodeMirrorClient.prototype.initializeCodeMirror = function (str) {
     var cm = this.cm;
     var self = this;
+
+    cm.setValue(str);
+    this.oldValue = str;
 
     var oldOnChange = cm.getOption('onChange');
     cm.setOption('onChange', function (_, change) {
@@ -866,14 +881,20 @@ if (typeof module === 'object') {
     cm.redo = function () { self.redo(); };
   };
 
-  CodeMirrorClient.prototype.initializeUsers = function () {
-    var users = this.users;
-    for (var name in users) {
-      if (users.hasOwnProperty(name)) {
-        users[name].name = name;
-        this.initializeUser(users[name]);
+  CodeMirrorClient.prototype.initializeClients = function (clients) {
+    for (var clientId in clients) {
+      if (clients.hasOwnProperty(clientId)) {
+        var client = clients[clientId];
+        console.log(clientId, client);
+        client.clientId = clientId;
+        this.clients[clientId] = client;
+        this.initializeClient(client);
       }
     }
+  };
+
+  CodeMirrorClient.prototype.initializeClientList = function () {
+    this.clientListEl = document.createElement('ul');
   };
 
   function rgb2hex (r, g, b) {
@@ -899,36 +920,44 @@ if (typeof module === 'object') {
     return rgb2hex(hue2rgb(h+1/3), hue2rgb(h), hue2rgb(h-1/3));
   }
 
-  CodeMirrorClient.prototype.initializeUser = function (user) {
-    user.hue = Math.random();
-    user.color = hsl2hex(user.hue, 0.75, 0.5);
-    user.lightColor = hsl2hex(user.hue, 0.5, 0.9);
-    user.el = createUserElement(user);
+  CodeMirrorClient.prototype.initializeClient = function (client) {
+    console.log("initializeClient");
+    client.hue = Math.random();
+    client.color = hsl2hex(client.hue, 0.75, 0.5);
+    client.lightColor = hsl2hex(client.hue, 0.5, 0.9);
 
-    user.li = document.createElement('li');
-    user.li.style.color = user.color;
-    user.li.appendChild(document.createTextNode(user.name));
-    this.userListEl.appendChild(user.li);
+    if (client.name) {
+      client.li = this.createClientListItem(client);
+      this.clientListEl.appendChild(client.li);
+    }
 
-    this.createUserSelectionStyleRule(user);
-    this.updateUserElementPosition(user);
-    this.updateUserMark(user);
+    this.createClientCursorEl(client);
+    this.updateClientCursorElPosition(client);
+    this.createClientSelectionStyleRule(client);
+    this.updateClientMark(client);
+  };
+
+  CodeMirrorClient.prototype.createClientListItem = function (client) {
+    var el = document.createElement('li');
+    el.style.color = client.color;
+    el.appendChild(document.createTextNode(client.name));
+    return el;
   };
 
   function randomInt (n) {
     return Math.floor(Math.random() * n);
   }
 
-  CodeMirrorClient.prototype.createUserSelectionStyleRule = function (user) {
-    user.selectionClassName = 'user-selection-' + randomInt(1e6);
-    var selector = '.' + user.selectionClassName;
-    var styles = 'background:' + user.lightColor + ';';
+  CodeMirrorClient.prototype.createClientSelectionStyleRule = function (client) {
+    client.selectionClassName = 'client-selection-' + randomInt(1e6);
+    var selector = '.' + client.selectionClassName;
+    var styles = 'background:' + client.lightColor + ';';
     var rule = selector + '{' + styles + '}';
     try {
       var styleSheet = document.styleSheets.item(0);
       styleSheet.insertRule(rule, styleSheet.rules.length);
     } catch (exc) {
-      console.error("Couldn't add style rule for user selections.", exc);
+      console.error("Couldn't add style rule for client selections.", exc);
     }
   };
 
@@ -972,12 +1001,12 @@ if (typeof module === 'object') {
     if (sourceStack.length === 0) { return; }
     var operation = sourceStack.pop();
     operation.revision = this.createOperation().revision;
+    targetStack.push(operation.invert());
     this.unredo = true;
     operation.applyToCodeMirror(this.cm);
     this.cursor = this.selectionEnd = cursorIndexAfterOperation(operation);
     this.cm.setCursor(this.cm.posFromIndex(this.cursor));
     this.applyClient(operation);
-    targetStack.push(operation.invert());
   };
 
   CodeMirrorClient.prototype.transformUnredoStack = function (stack, operation) {
@@ -1050,35 +1079,45 @@ if (typeof module === 'object') {
   CodeMirrorClient.prototype.redo = function () {
     this.unredoHelper(this.redoStack, this.undoStack);
   };
+  
+  CodeMirrorClient.prototype.createClientCursorEl = function (client) {
+    var el = client.cursorEl = document.createElement('div');
+    el.className = 'other-client';
+    var pre = document.createElement('pre');
+    pre.style.borderLeftColor = client.color;
+    pre.innerHTML = '&nbsp;';
+    el.appendChild(pre);
+    //el.appendChild(document.createTextNode(client.name));
+  };
 
-  CodeMirrorClient.prototype.updateUserCursor = function (name, cursor, selectionEnd) {
+  CodeMirrorClient.prototype.updateClientCursor = function (clientId, cursor, selectionEnd) {
     console.log(name + " moved his/her cursor: " + cursor);
 
-    var user = this.users[name];
-    user.cursor = cursor;
-    user.selectionEnd = selectionEnd;
+    var client = this.getClientObject(clientId);
+    client.cursor = cursor;
+    client.selectionEnd = selectionEnd;
 
-    this.updateUserElementPosition(user);
-    this.updateUserMark(user);
+    this.updateClientCursorElPosition(client);
+    this.updateClientMark(client);
   };
 
-  CodeMirrorClient.prototype.updateUserElementPosition = function (user) {
-    var pos = cm.posFromIndex(user.cursor);
-    removeElement(user.el);
-    this.cm.addWidget(pos, user.el, false);
+  CodeMirrorClient.prototype.updateClientCursorElPosition = function (client) {
+    var pos = cm.posFromIndex(client.cursor);
+    removeElement(client.cursorEl);
+    this.cm.addWidget(pos, client.cursorEl, false);
   };
 
-  CodeMirrorClient.prototype.updateUserMark = function (user) {
-    if (user.mark) {
-      user.mark.clear();
-      delete user.mark;
+  CodeMirrorClient.prototype.updateClientMark = function (client) {
+    if (client.mark) {
+      client.mark.clear();
+      delete client.mark;
     }
-    if (user.selectionEnd !== user.cursor) {
-      var from = Math.min(user.cursor, user.selectionEnd);
-      var to   = Math.max(user.cursor, user.selectionEnd);
+    if (client.selectionEnd !== client.cursor) {
+      var from = Math.min(client.cursor, client.selectionEnd);
+      var to   = Math.max(client.cursor, client.selectionEnd);
       var fromPos = cm.posFromIndex(from);
       var toPos   = cm.posFromIndex(to);
-      user.mark = this.cm.markText(fromPos, toPos, user.selectionClassName);
+      client.mark = this.cm.markText(fromPos, toPos, client.selectionClassName);
     }
   };
 
@@ -1141,17 +1180,6 @@ if (typeof module === 'object') {
     this.fromServer = true;
     operation.applyToCodeMirror(this.cm);
   };
-  
-  function createUserElement (user) {
-    var el = document.createElement('div');
-    el.className = 'other-user';
-    var pre = document.createElement('pre');
-    pre.style.borderLeftColor = user.color;
-    pre.innerHTML = '&nbsp;';
-    el.appendChild(pre);
-    //el.appendChild(document.createTextNode(user.name));
-    return el;
-  }
 
   // Set Const.prototype.__proto__ to Super.prototype
   function inherit (Const, Super) {
