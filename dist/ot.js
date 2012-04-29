@@ -841,6 +841,9 @@ if (typeof module === 'object') {
   CodeMirrorClient.prototype.onSetName = function (clientId, name) {
     var client = this.getClientObject(clientId);
     client.name = name;
+    this.initializeClientColor(client);
+    client.pre.style.borderLeftColor = client.color;
+    this.createClientSelectionStyleRule(client);
     var oldLi = client.li;
     var newLi = client.li = this.createClientListItem(client);
     if (oldLi) {
@@ -912,11 +915,23 @@ if (typeof module === 'object') {
     return rgb2hex(hue2rgb(h+1/3), hue2rgb(h), hue2rgb(h-1/3));
   }
 
-  CodeMirrorClient.prototype.initializeClient = function (client) {
-    console.log("initializeClient");
-    client.hue = Math.random();
+  function hueFromName (name) {
+    var a = 1;
+    for (var i = 0; i < name.length; i++) {
+      a = 17 * (a+name.charCodeAt(i)) % 360;
+    }
+    return a/360;
+  }
+
+  CodeMirrorClient.prototype.initializeClientColor = function (client) {
+    client.hue = client.name ? hueFromName(client.name) : Math.random();
     client.color = hsl2hex(client.hue, 0.75, 0.5);
     client.lightColor = hsl2hex(client.hue, 0.5, 0.9);
+  };
+
+  CodeMirrorClient.prototype.initializeClient = function (client) {
+    console.log("initializeClient");
+    this.initializeClientColor(client);
 
     if (client.name) {
       client.li = this.createClientListItem(client);
@@ -1075,7 +1090,7 @@ if (typeof module === 'object') {
   CodeMirrorClient.prototype.createClientCursorEl = function (client) {
     var el = client.cursorEl = document.createElement('div');
     el.className = 'other-client';
-    var pre = document.createElement('pre');
+    var pre = client.pre = document.createElement('pre');
     pre.style.borderLeftColor = client.color;
     pre.innerHTML = '&nbsp;';
     el.appendChild(pre);
