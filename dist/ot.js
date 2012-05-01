@@ -833,7 +833,7 @@ if (typeof module === 'object') {
 
     this.li = document.createElement('li');
     if (name) {
-      this.li.innerText = name;
+      this.li.textContent = name;
       this.listEl.appendChild(this.li);
     }
 
@@ -866,7 +866,7 @@ if (typeof module === 'object') {
   OtherClient.prototype.setName = function (name) {
     this.name = name;
 
-    this.li.innerText = name;
+    this.li.textContent = name;
     if (!this.li.parentNode) {
       this.listEl.appendChild(this.li);
     }
@@ -1199,8 +1199,10 @@ if (typeof module === 'object') {
 
   function addStyleRule (css) {
     try {
-      var styleSheet = document.styleSheets.item(0);
-      styleSheet.insertRule(css, styleSheet.rules.length);
+      var styleSheet = document.styleSheets.item(0),
+          insertionPoint = (styleSheet.rules? styleSheet.rules:
+              styleSheet.cssRules).length;
+      styleSheet.insertRule(css, insertionPoint);
     } catch (exc) {
       console.error("Couldn't add style rule.", exc);
     }
