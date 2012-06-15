@@ -7,6 +7,8 @@
     * CodeMirrorServer
   * Explain how javascript-operational-transformation is different from ShareJS.
 * Implementation
+  * Integrate Marijn Haverbeke's color hashing ()
+  * Implement serialization to and parsing of Daniel Spiewak's CCCP
   * Solve connection flakiness
   * Store operations and document in a DB
   * Assign a color to each collaborator
