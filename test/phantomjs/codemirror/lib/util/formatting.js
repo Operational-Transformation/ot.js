@@ -84,7 +84,8 @@ CodeMirror.modeExtensions["css"] = {
   commentStart: "/*",
   commentEnd: "*/",
   wordWrapChars: [";", "\\{", "\\}"],
-  autoFormatLineBreaks: function (text) {
+  autoFormatLineBreaks: function (text, startPos, endPos) {
+    text = text.substring(startPos, endPos);
     return text.replace(new RegExp("(;|\\{|\\})([^\r\n])", "g"), "$1\n$2");
   }
 };
@@ -97,6 +98,8 @@ CodeMirror.modeExtensions["javascript"] = {
   getNonBreakableBlocks: function (text) {
     var nonBreakableRegexes = [
         new RegExp("for\\s*?\\(([\\s\\S]*?)\\)"),
+        new RegExp("\\\\\"([\\s\\S]*?)(\\\\\"|$)"),
+        new RegExp("\\\\\'([\\s\\S]*?)(\\\\\'|$)"),
         new RegExp("'([\\s\\S]*?)('|$)"),
         new RegExp("\"([\\s\\S]*?)(\"|$)"),
         new RegExp("//.*([\r\n]|$)")
@@ -125,7 +128,8 @@ CodeMirror.modeExtensions["javascript"] = {
     return nonBreakableBlocks;
   },
 
-  autoFormatLineBreaks: function (text) {
+  autoFormatLineBreaks: function (text, startPos, endPos) {
+    text = text.substring(startPos, endPos);
     var curPos = 0;
     var reLinesSplitter = new RegExp("(;|\\{|\\})([^\r\n])", "g");
     var nonBreakableBlocks = this.getNonBreakableBlocks(text);
@@ -158,7 +162,8 @@ CodeMirror.modeExtensions["xml"] = {
   commentEnd: "-->",
   wordWrapChars: [">"],
 
-  autoFormatLineBreaks: function (text) {
+  autoFormatLineBreaks: function (text, startPos, endPos) {
+    text = text.substring(startPos, endPos);
     var lines = text.split("\n");
     var reProcessedPortion = new RegExp("(^\\s*?<|^[^<]*?)(.+)(>\\s*?$|[^>]*?$)");
     var reOpenBrackets = new RegExp("<", "g");

@@ -1,4 +1,26 @@
-var tests = [];
+function forEach(arr, f) {
+  for (var i = 0, e = arr.length; i < e; ++i) f(arr[i]);
+}
+
+function addDoc(cm, width, height) {
+  var content = [], line = "";
+  for (var i = 0; i < width; ++i) line += "x";
+  for (var i = 0; i < height; ++i) content.push(line);
+  cm.setValue(content.join("\n"));
+}
+
+function byClassName(elt, cls) {
+  if (elt.getElementsByClassName) return elt.getElementsByClassName(cls);
+  var found = [], re = new RegExp("\\b" + cls + "\\b");
+  function search(elt) {
+    if (elt.nodeType == 3) return;
+    if (re.test(elt.className)) found.push(elt);
+    for (var i = 0, e = elt.childNodes.length; i < e; ++i)
+      search(elt.childNodes[i]);
+  }
+  search(elt);
+  return found;
+}
 
 test("fromTextArea", function() {
   var te = document.getElementById("code");
@@ -116,11 +138,8 @@ testCM("lineInfo", function(cm) {
 }, {value: "111111\n222222\n333333"});
 
 testCM("coords", function(cm) {
-  var scroller = cm.getScrollerElement();
-  scroller.style.height = "100px";
-  var content = [];
-  for (var i = 0; i < 200; ++i) content.push("------------------------------" + i);
-  cm.setValue(content.join("\n"));
+  cm.setSize(null, 100);
+  addDoc(cm, 32, 200);
   var top = cm.charCoords({line: 0, ch: 0});
   var bot = cm.charCoords({line: 200, ch: 30});
   is(top.x < bot.x);
@@ -133,10 +152,8 @@ testCM("coords", function(cm) {
 });
 
 testCM("coordsChar", function(cm) {
-  var content = [];
-  for (var i = 0; i < 70; ++i) content.push("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx");
-  cm.setValue(content.join("\n"));
-  for (var ch = 0; ch < 35; ch += 2) {
+  addDoc(cm, 35, 70);
+  for (var ch = 0; ch <= 35; ch += 5) {
     for (var line = 0; line < 70; line += 5) {
       cm.setCursor(line, ch);
       var coords = cm.charCoords({line: line, ch: ch});
@@ -192,9 +209,10 @@ testCM("undo", function(cm) {
     cm.replaceRange("a", {line: 0, ch: 0});
     cm.replaceRange("b", {line: 3, ch: 0});
   }
-  eq(cm.historySize().undo, 1);
-  cm.undo();
-  eq(cm.historySize().redo, 1);
+  eq(cm.historySize().undo, 40);
+  for (var i = 0; i < 40; ++i)
+    cm.undo();
+  eq(cm.historySize().redo, 40);
   eq(cm.getValue(), "1\n\n\n2");
 }, {value: "abc"});
 
@@ -261,6 +279,13 @@ testCM("markTextMultiLine", function(cm) {
   });
 });
 
+testCM("markClearBetween", function(cm) {
+  cm.setValue("aaa\nbbb\nccc\nddd\n");
+  cm.markText({line: 0, ch: 0}, {line: 2}, "foo");
+  cm.replaceRange("aaa\nbbb\nccc", {line: 0, ch: 0}, {line: 2});
+  eq(cm.findMarksAt({line: 1, ch: 1}).length, 0);
+});
+
 testCM("bookmark", function(cm) {
   function p(v) { return v && {line: v[0], ch: v[1]}; }
   forEach([{a: [1, 0], b: [1, 1], c: "", d: [1, 4]},
@@ -278,59 +303,165 @@ testCM("bookmark", function(cm) {
   });
 });
 
-// Scaffolding
+testCM("bug577", function(cm) {
+  cm.setValue("a\nb");
+  cm.clearHistory();
+  cm.setValue("fooooo");
+  cm.undo();
+});
 
-function htmlEscape(str) {
-  return str.replace(/[<&]/g, function(str) {return str == "&" ? "&amp;" : "&lt;";});
-}
-function forEach(arr, f) {
-  for (var i = 0, e = arr.length; i < e; ++i) f(arr[i]);
-}
+testCM("scrollSnap", function(cm) {
+  cm.setSize(100, 100);
+  addDoc(cm, 200, 200);
+  cm.setCursor({line: 100, ch: 180});
+  var info = cm.getScrollInfo();
+  is(info.x > 0 && info.y > 0);
+  cm.setCursor({line: 0, ch: 0});
+  info = cm.getScrollInfo();
+  is(info.x == 0 && info.y == 0, "scrolled clean to top");
+  cm.setCursor({line: 100, ch: 180});
+  cm.setCursor({line: 199, ch: 0});
+  info = cm.getScrollInfo();
+  is(info.x == 0 && info.y == info.height - 100, "scrolled clean to bottom");
+});
 
-function Failure(why) {this.message = why;}
-
-function test(name, run) {tests.push({name: name, func: run});}
-function testCM(name, run, opts) {
-  test(name, function() {
-    var place = document.getElementById("testground"), cm = CodeMirror(place, opts);
-    try {run(cm);}
-    finally {place.removeChild(cm.getWrapperElement());}
-  });
-}
-
-function runTests() {
-  var failures = [], run = 0;
-  for (var i = 0; i < tests.length; ++i) {
-    var test = tests[i];
-    try {test.func();}
-    catch(e) {
-      if (e instanceof Failure)
-        failures.push({type: "failure", test: test.name, text: e.message});
-      else
-        failures.push({type: "error", test: test.name, text: e.toString()});
+testCM("selectionPos", function(cm) {
+  cm.setSize(100, 100);
+  addDoc(cm, 200, 100);
+  cm.setSelection({line: 1, ch: 100}, {line: 98, ch: 100});
+  var lineWidth = cm.charCoords({line: 0, ch: 200}, "local").x;
+  var lineHeight = cm.charCoords({line: 1}).y - cm.charCoords({line: 0}).y;
+  cm.scrollTo(0, 0);
+  var selElt = byClassName(cm.getWrapperElement(), "CodeMirror-selected");
+  var outer = cm.getWrapperElement().getBoundingClientRect();
+  var sawMiddle, sawTop, sawBottom;
+  for (var i = 0, e = selElt.length; i < e; ++i) {
+    var box = selElt[i].getBoundingClientRect();
+    var atLeft = box.left - outer.left < 30;
+    var width = box.right - box.left;
+    var atRight = box.right - outer.left > .8 * lineWidth;
+    if (atLeft && atRight) {
+      sawMiddle = true;
+      is(box.bottom - box.top > 95 * lineHeight, "middle high");
+      is(width > .9 * lineWidth, "middle wide");
+    } else {
+      is(width > .4 * lineWidth, "top/bot wide enough");
+      is(width < .6 * lineWidth, "top/bot slim enough");
+      if (atLeft) {
+        sawBottom = true;
+        is(box.top - outer.top > 96 * lineHeight, "bot below");
+      } else if (atRight) {
+        sawTop = true;
+        is(box.top - outer.top < 2 * lineHeight, "top above");
+      }
     }
-    run++;
   }
-  var html = [run + " tests run."];
-  if (failures.length)
-    forEach(failures, function(fail) {
-      html.push(fail.test + ': <span class="' + fail.type + '">' + htmlEscape(fail.text) + "</span>");
-    });
-  else html.push('<span class="ok">All passed.</span>');
-  document.getElementById("output").innerHTML = html.join("\n");
-}
+  is(sawTop && sawBottom && sawMiddle, "all parts");
+});
 
-function eq(a, b, msg) {
-  if (a != b) throw new Failure(a + " != " + b + (msg ? " (" + msg + ")" : ""));
-}
-function eqPos(a, b, msg) {
-  if (a == b) return;
-  if (a == null || b == null) throw new Failure("comparing point to null");
-  eq(a.line, b.line, msg);
-  eq(a.ch, b.ch, msg);
-}
-function is(a, msg) {
-  if (!a) throw new Failure("assertion failed" + (msg ? " (" + msg + ")" : ""));
-}
+testCM("restoreHistory", function(cm) {
+  cm.setValue("abc\ndef");
+  cm.compoundChange(function() {cm.setLine(1, "hello");});
+  cm.compoundChange(function() {cm.setLine(0, "goop");});
+  cm.undo();
+  var storedVal = cm.getValue(), storedHist = cm.getHistory();
+  if (window.JSON) storedHist = JSON.parse(JSON.stringify(storedHist));
+  eq(storedVal, "abc\nhello");
+  cm.setValue("");
+  cm.clearHistory();
+  eq(cm.historySize().undo, 0);
+  cm.setValue(storedVal);
+  cm.setHistory(storedHist);
+  cm.redo();
+  eq(cm.getValue(), "goop\nhello");
+  cm.undo(); cm.undo();
+  eq(cm.getValue(), "abc\ndef");
+});
 
-window.onload = runTests;
+testCM("doubleScrollbar", function(cm) {
+  var dummy = document.body.appendChild(document.createElement("p"));
+  dummy.style.cssText = "height: 50px; overflow: scroll; width: 50px";
+  var scrollbarWidth = dummy.offsetWidth + 1 - dummy.clientWidth;
+  document.body.removeChild(dummy);
+  cm.setSize(null, 100);
+  addDoc(cm, 1, 300);
+  var wrap = cm.getWrapperElement();
+  is(wrap.offsetWidth - byClassName(wrap, "CodeMirror-lines")[0].offsetWidth <= scrollbarWidth);
+});
+
+testCM("weirdLinebreaks", function(cm) {
+  cm.setValue("foo\nbar\rbaz\r\nquux\n\rplop");
+  is(cm.getValue(), "foo\nbar\nbaz\nquux\n\nplop");
+  is(cm.lineCount(), 6);
+  cm.setValue("\n\n");
+  is(cm.lineCount(), 3);
+});
+
+testCM("setSize", function(cm) {
+  cm.setSize(100, 100);
+  is(cm.getWrapperElement().offsetWidth, 100);
+  is(cm.getWrapperElement().offsetHeight, 100);
+  cm.setSize("100%", "3em");
+  is(cm.getWrapperElement().style.width, "100%");
+  is(cm.getScrollerElement().style.height, "3em");
+  cm.setSize(null, 40);
+  is(cm.getWrapperElement().style.width, "100%");
+  is(cm.getScrollerElement().style.height, "40px");
+});
+
+testCM("hiddenLines", function(cm) {
+  addDoc(cm, 4, 10);
+  cm.hideLine(4);
+  cm.setCursor({line: 3, ch: 0});
+  CodeMirror.commands.goLineDown(cm);
+  eqPos(cm.getCursor(), {line: 5, ch: 0});
+  cm.setLine(3, "abcdefg");
+  cm.setCursor({line: 3, ch: 6});
+  CodeMirror.commands.goLineDown(cm);
+  eqPos(cm.getCursor(), {line: 5, ch: 4});
+  cm.setLine(3, "ab");
+  cm.setCursor({line: 3, ch: 2});
+  CodeMirror.commands.goLineDown(cm);
+  eqPos(cm.getCursor(), {line: 5, ch: 2});
+});
+
+testCM("hiddenLinesSelectAll", function(cm) {  // Issue #484
+  addDoc(cm, 4, 20);
+  for (var i = 0; i < 20; ++i)
+    if (i != 10) cm.hideLine(i);
+  CodeMirror.commands.selectAll(cm);
+  eqPos(cm.getCursor(true), {line: 10, ch: 0});
+  eqPos(cm.getCursor(false), {line: 10, ch: 4});
+});
+
+testCM("wrappingAndResizing", function(cm) {
+  cm.setSize(null, "auto");
+  cm.setOption("lineWrapping", true);
+  var wrap = cm.getWrapperElement(), h0 = wrap.offsetHeight, w = 50;
+  var doc = "xxx xxx xxx xxx xxx";
+  cm.setValue(doc);
+  for (var step = 10;; w += step) {
+    cm.setSize(w);
+    if (wrap.offsetHeight == h0) {
+      if (step == 10) { w -= 10; step = 1; }
+      else { w--; break; }
+    }
+  }
+  // Ensure that putting the cursor at the end of the maximally long
+  // line doesn't cause wrapping to happen.
+  cm.setCursor({line: 0, ch: doc.length});
+  eq(wrap.offsetHeight, h0);
+  cm.replaceSelection("x");
+  is(wrap.offsetHeight > h0);
+  // Now add a max-height and, in a document consisting of
+  // almost-wrapped lines, go over it so that a scrollbar appears.
+  cm.setValue(doc + "\n" + doc + "\n");
+  cm.getScrollerElement().style.maxHeight = "100px";
+  cm.replaceRange("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n!\n", {line: 2, ch: 0});
+  forEach([{line: 0, ch: doc.length}, {line: 0, ch: doc.length - 1},
+           {line: 0, ch: 0}, {line: 1, ch: doc.length}, {line: 1, ch: doc.length - 1}],
+          function(pos) {
+    var coords = cm.charCoords(pos);
+    eqPos(pos, cm.coordsChar({x: coords.x + 2, y: coords.y + 2}));
+  });
+});
