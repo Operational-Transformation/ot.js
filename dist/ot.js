@@ -71,15 +71,16 @@ ot.Operation = (function () {
   };
 
   // Delete a string at the current position.
-  Operation.prototype.delete = function (str) {
-    assert(typeof str === 'string');
-    if (str === '') { return this; }
-    this.baseLength += str.length;
+  Operation.prototype.delete = function (n) {
+    if (typeof n === 'string') { n = n.length; }
+    assert(typeof n === 'number');
+    if (n === 0) { return this; }
+    this.baseLength += n;
     var lastOp = this.ops[this.ops.length-1];
     if (lastOp && lastOp.delete) {
-      lastOp.delete += str;
+      lastOp.delete += n;
     } else {
-      this.ops.push({ delete: str });
+      this.ops.push({ delete: n });
     }
     return this;
   };
@@ -101,7 +102,7 @@ ot.Operation = (function () {
              ? "retain " + op.retain
              : (op.insert
                 ? "insert '" + op.insert + "'"
-                : "delete '" + op.delete + "'")
+                : "delete " + op.delete);
     }).join(', ');
   };
 
@@ -151,12 +152,7 @@ ot.Operation = (function () {
         // Insert string.
         newStr[j++] = op.insert;
       } else { // delete op
-        // Make sure that the deleted string matches the next characters in the
-        // input string.
-        if (op.delete !== str.slice(strIndex, strIndex + op.delete.length)) {
-          throw new Error("The deleted string and the next characters in the string don't match.");
-        }
-        strIndex += op.delete.length;
+        strIndex += op.delete;
       }
     }
     if (strIndex !== str.length) {
@@ -169,17 +165,20 @@ ot.Operation = (function () {
   // operation that reverts the effects of the operation, e.g. when you have an
   // operation 'insert("hello "); skip(6);' then the inverse is 'delete("hello ");
   // skip(6);'. The inverse should be used for implementing undo.
-  Operation.prototype.invert = function () {
+  Operation.prototype.invert = function (str) {
+    var strIndex = 0;
     var inverse = new Operation(this.revision + 1);
     var ops = this.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
       if (op.retain) {
         inverse.retain(op.retain);
+        strIndex += op.retain;
       } else if (op.insert) {
-        inverse.delete(op.insert);
+        inverse.delete(op.insert.length);
       } else { // delete op
-        inverse.insert(op.delete);
+        inverse.insert(str.slice(strIndex, strIndex + op.delete));
+        strIndex += op.delete;
       }
     }
     return inverse;
@@ -204,8 +203,8 @@ ot.Operation = (function () {
     var op1 = ops1[i1++], op2 = ops2[i2++]; // current ops
     while (true) {
       // save length of current ops
-      var op1l = op1 && (op1.retain || (op1.insert || op1.delete).length);
-      var op2l = op2 && (op2.retain || (op2.insert || op2.delete).length);
+      var op1l = op1 && (op1.retain || op1.delete || op1.insert.length);
+      var op2l = op2 && (op2.retain || op2.delete || op2.insert.length);
       var minl = Math.min(op1l, op2l);
       // Dispatch on the type of op1 and op2
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
@@ -236,9 +235,6 @@ ot.Operation = (function () {
           op2 = { retain: op2l - op1l };
         }
       } else if (op1.insert && op2.delete) {
-        if (op1.insert.slice(0, minl) !== op2.delete.slice(0, minl)) {
-          throw new Error("Successive operations must delete what has been inserted before.");
-        }
         if (op1l > op2l) {
           op1 = { insert: op1.insert.slice(op2l) };
           op2 = ops2[i2++];
@@ -247,7 +243,7 @@ ot.Operation = (function () {
           op2 = ops2[i2++];
         } else {
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete.slice(op1l) };
+          op2 = { delete: op2.delete - op1l };
         }
       } else if (op1.insert && op2.retain) {
         if (op1l > op2l) {
@@ -273,9 +269,9 @@ ot.Operation = (function () {
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
-          operation.delete(op2.delete.slice(0, op1l));
+          operation.delete(op1l);
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete.slice(op1l) };
+          op2 = { delete: op2.delete - op1l };
         }
       } else if (op1.delete) {
         operation.delete(op1.delete);
@@ -318,8 +314,8 @@ ot.Operation = (function () {
       // At every iteration of the loop, the imaginary cursor that both
       // operation1 and operation2 have that operates on the input string must
       // have the same position in the input string.
-      var op1l = op1 && (op1.retain || (op1.insert || op1.delete).length);
-      var op2l = op2 && (op2.retain || (op2.insert || op2.delete).length);
+      var op1l = op1 && (op1.retain || op1.delete || op1.insert.length);
+      var op2l = op2 && (op2.retain || op2.delete || op2.insert.length);
       var minl = Math.min(op1l, op2l);
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
         // end condition: both ops1 and ops2 have been processed
@@ -351,27 +347,24 @@ ot.Operation = (function () {
           op2 = { retain: op2l - op1l };
         }
       } else if (op1.delete && op2.delete) {
-        if (op1.delete.slice(0, minl) !== op2.delete.slice(0, minl)) {
-          throw new Error("When two concurrent operations delete text at the same position, they must delete the same text");
-        }
         // Both operations delete the same string at the same position. We don't
         // need to produce any operations, we just skip over the delete ops and
         // handle the case that one operation deletes more than the other.
         if (op1l > op2l) {
-          op1 = { delete: op1.delete.slice(op2l) };
+          op1 = { delete: op1.delete - op2l };
           op2 = ops2[i2++];
         } else if (op1l === op2l) {
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete.slice(op1l) };
+          op2 = { delete: op2.delete - op1l };
         }
       // next two cases: delete/retain and retain/delete
       } else if (op1.delete && op2.retain) {
-        operation1prime.delete(op1.delete.slice(0, minl));
+        operation1prime.delete(minl);
         if (op1l > op2l) {
-          op1 = { delete: op1.delete.slice(op2l) };
+          op1 = { delete: op1.delete - op2l };
           op2 = ops2[i2++];
         } else if (op1l === op2l) {
           op1 = ops1[i1++];
@@ -381,7 +374,7 @@ ot.Operation = (function () {
           op2 = { retain: op2.retain - op1l };
         }
       } else if (op1.retain && op2.delete) {
-        operation2prime.delete(op2.delete.slice(0, minl));
+        operation2prime.delete(minl);
         if (op1l > op2l) {
           op1 = { retain: op1.retain - op2l };
           op2 = ops2[i2++];
@@ -390,7 +383,7 @@ ot.Operation = (function () {
           op2 = ops2[i2++];
         } else {
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete.slice(op1l) };
+          op2 = { delete: op2.delete - op1l };
         }
       } else {
         throw new Error("The two operations aren't compatible");
@@ -746,9 +739,8 @@ if (typeof module === 'object') {
           index += op.insert.length;
         } else if (op.delete) {
           var from = cm.posFromIndex(index);
-          var to   = cm.posFromIndex(index + op.delete.length);
+          var to   = cm.posFromIndex(index + op.delete);
           // Check if the deleted characters match CodeMirror's content
-          assert(cm.getRange(from, to) === op.delete);
           cm.replaceRange('', from, to);
         }
       }
@@ -1001,7 +993,7 @@ if (typeof module === 'object') {
     if (sourceStack.length === 0) { return; }
     var operation = sourceStack.pop();
     operation.revision = this.createOperation().revision;
-    targetStack.push(operation.invert());
+    targetStack.push(operation.invert(this.oldValue));
     this.unredo = true;
     operation.applyToCodeMirror(this.cm);
     this.cursor = this.selectionEnd = cursorIndexAfterOperation(operation);
@@ -1046,9 +1038,9 @@ if (typeof module === 'object') {
         var opA = a.ops[0], opsB = b.ops;
         if (!opA.retain) { return false; }
         if (opsB[0].delete) {
-          return opA.retain === opsB[0].delete.length;
+          return opA.retain === opsB[0].delete;
         } else {
-          return opA.retain === opsB[0].retain + opsB[1].delete.length;
+          return opA.retain === opsB[0].retain + opsB[1].delete;
         }
       }
       return false;
@@ -1086,7 +1078,7 @@ if (typeof module === 'object') {
       if (!this.fromServer && !this.unredo) {
         var operation = this.createOperation()
           .fromCodeMirrorChange(change, this.oldValue);
-        this.addOperationToUndo(operation.invert());
+        this.addOperationToUndo(operation.invert(this.oldValue));
         this.applyClient(operation);
       }
     } finally {

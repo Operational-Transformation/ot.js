@@ -26,7 +26,7 @@ function testLengths () {
   o.retain(2);
   h.assertEqual(7, o.baseLength);
   h.assertEqual(10, o.targetLength);
-  o.delete("xy");
+  o.delete(2);
   h.assertEqual(9, o.baseLength);
   h.assertEqual(10, o.targetLength);
 }
@@ -38,6 +38,8 @@ function testChaining () {
     .insert("lorem")
     .insert("")
     .delete("abc")
+    .delete(3)
+    .delete(0)
     .delete("");
   h.assertEqual(3, o.ops.length);
 }
@@ -52,7 +54,7 @@ function testApply () {
 function testInvert () {
   var str = h.randomString(50);
   var o = h.randomOperation(0, str);
-  var p = o.invert();
+  var p = o.invert(str);
   h.assertEqual(p.revision, 1);
   h.assertEqual(o.baseLength, p.targetLength);
   h.assertEqual(o.targetLength, p.baseLength);
@@ -85,10 +87,10 @@ function testOpsMerging () {
   h.assertEqual("abcxyz", last(o.ops).insert)
   o.delete("d");
   h.assertEqual(3, o.ops.length);
-  h.assertEqual("d", last(o.ops).delete)
+  h.assertEqual(1, last(o.ops).delete)
   o.delete("d");
   h.assertEqual(3, o.ops.length);
-  h.assertEqual("dd", last(o.ops).delete)
+  h.assertEqual(2, last(o.ops).delete)
 }
 
 function testToString () {
@@ -97,7 +99,7 @@ function testToString () {
   o.insert('lorem');
   o.delete('ipsum');
   o.retain(5);
-  h.assertEqual("retain 2, insert 'lorem', delete 'ipsum', retain 5", o.toString());
+  h.assertEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
 }
 
 function testFromJSON () {
