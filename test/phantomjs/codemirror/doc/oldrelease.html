@@ -1,20 +1,58 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8"/>
     <title>CodeMirror</title>
     <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Droid+Sans|Droid+Sans:bold"/>
     <link rel="stylesheet" type="text/css" href="docs.css"/>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="alternate" href="http://twitter.com/statuses/user_timeline/242283288.rss" type="application/rss+xml"/>
   </head>
   <body>
 
 <h1><span class="logo-braces">{ }</span> <a href="http://codemirror.net/">CodeMirror</a></h1>
 
-<pre class="grey">
-<img src="baboon.png" class="logo" alt="logo"/>/* Old release history */
-
+<div class="grey">
+<img src="baboon.png" class="logo" alt="logo"/>
+<pre>
+/* Old release
+   history */
 </pre>
+</div>
+
+  <p class="rel">21-11-2011: <a href="http://codemirror.net/codemirror-2.18.zip">Version 2.18</a>:</p>
+  <p class="rel-note">Fixes <code>TextMarker.clear</code>, which is broken in 2.17.</p>
+
+  <p class="rel">21-11-2011: <a href="http://codemirror.net/codemirror-2.17.zip">Version 2.17</a>:</p>
+  <ul class="rel-note">
+    <li>Add support for <a href="manual.html#option_lineWrapping">line
+    wrapping</a> and <a href="manual.html#hideLine">code
+    folding</a>.</li>
+    <li>Add <a href="../mode/gfm/index.html">Github-style Markdown</a> mode.</li>
+    <li>Add <a href="../theme/monokai.css">Monokai</a>
+    and <a href="../theme/rubyblue.css">Rubyblue</a> themes.</li>
+    <li>Add <a href="manual.html#setBookmark"><code>setBookmark</code></a> method.</li>
+    <li>Move some of the demo code into reusable components
+    under <a href="../lib/util/"><code>lib/util</code></a>.</li>
+    <li>Make screen-coord-finding code faster and more reliable.</li>
+    <li>Fix drag-and-drop in Firefox.</li>
+    <li>Improve support for IME.</li>
+    <li>Speed up content rendering.</li>
+    <li>Fix browser's built-in search in Webkit.</li>
+    <li>Make double- and triple-click work in IE.</li>
+    <li>Various fixes to modes.</li>
+  </ul>
+
+  <p class="rel">27-10-2011: <a href="http://codemirror.net/codemirror-2.16.zip">Version 2.16</a>:</p>
+  <ul class="rel-note">
+    <li>Add <a href="../mode/perl/index.html">Perl</a>, <a href="../mode/rust/index.html">Rust</a>, <a href="../mode/tiddlywiki/index.html">TiddlyWiki</a>, and <a href="../mode/groovy/index.html">Groovy</a> modes.</li>
+    <li>Dragging text inside the editor now moves, rather than copies.</li>
+    <li>Add a <a href="manual.html#coordsFromIndex"><code>coordsFromIndex</code></a> method.</li>
+    <li><strong>API change</strong>: <code>setValue</code> now no longer clears history. Use <a href="manual.html#clearHistory"><code>clearHistory</code></a> for that.</li>
+    <li><strong>API change</strong>: <a href="manual.html#markText"><code>markText</code></a> now
+    returns an object with <code>clear</code> and <code>find</code>
+    methods. Marked text is now more robust when edited.</li>
+    <li>Fix editing code with tabs in Internet Explorer.</li>
+  </ul>
 
   <p class="rel">26-09-2011: <a href="http://codemirror.net/codemirror-2.15.zip">Version 2.15</a>:</p>
   <p class="rel-note">Fix bug that snuck into 2.14: Clicking the
@@ -119,7 +157,7 @@
     <li>Fix some issues with JavaScript indentation.</li>
   </ul>
 
-  <p class="rel">22-02-2011: <a href="https://github.com/marijnh/codemirror2/tree/beta2">Version 2.0 beta 2</a>:</p>
+  <p class="rel">22-02-2011: <a href="https://github.com/marijnh/codemirror/tree/beta2">Version 2.0 beta 2</a>:</p>
   <p class="rel-note">Somewhat more mature API, lots of bugs shaken out.</a>
 
   <p class="rel">17-02-2011: <a href="http://codemirror.net/codemirror-0.94.zip">Version 0.94</a>:</p>

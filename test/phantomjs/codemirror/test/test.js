@@ -22,7 +22,9 @@ function byClassName(elt, cls) {
   return found;
 }
 
-test("fromTextArea", function() {
+var ie_lt8 = /MSIE [1-7]\b/.test(navigator.userAgent);
+
+test("core_fromTextArea", function() {
   var te = document.getElementById("code");
   te.value = "CONTENT";
   var cm = CodeMirror.fromTextArea(te);
@@ -100,9 +102,13 @@ testCM("indent", function(cm) {
   cm.setOption("indentUnit", 8);
   cm.indentLine(1);
   eq(cm.getLine(1), "\tblah();");
+  cm.setOption("indentUnit", 10);
+  cm.setOption("tabSize", 4);
+  cm.indentLine(1);
+  eq(cm.getLine(1), "\t\t  blah();");
 }, {value: "if (x) {\nblah();\n}", indentUnit: 3, indentWithTabs: true, tabSize: 8});
 
-test("defaults", function() {
+test("core_defaults", function() {
   var olddefaults = CodeMirror.defaults, defs = CodeMirror.defaults = {};
   for (var opt in olddefaults) defs[opt] = olddefaults[opt];
   defs.indentUnit = 5;
@@ -251,13 +257,14 @@ testCM("markTextSingleLine", function(cm) {
     var r = cm.markText({line: 0, ch: 3}, {line: 0, ch: 6}, "foo");
     cm.replaceRange(test.c, {line: 0, ch: test.a}, {line: 0, ch: test.b});
     var f = r.find();
-    eq(f.from && f.from.ch, test.f); eq(f.to && f.to.ch, test.t);
+    eq(f && f.from.ch, test.f); eq(f && f.to.ch, test.t);
   });
 });
 
 testCM("markTextMultiLine", function(cm) {
   function p(v) { return v && {line: v[0], ch: v[1]}; }
   forEach([{a: [0, 0], b: [0, 5], c: "", f: [0, 0], t: [2, 5]},
+           {a: [0, 0], b: [0, 5], c: "foo\n", f: [1, 0], t: [3, 5]},
            {a: [0, 1], b: [0, 10], c: "", f: [0, 1], t: [2, 5]},
            {a: [0, 5], b: [0, 6], c: "x", f: [0, 6], t: [2, 5]},
            {a: [0, 0], b: [1, 0], c: "", f: [0, 0], t: [1, 5]},
@@ -269,15 +276,32 @@ testCM("markTextMultiLine", function(cm) {
            {a: [1, 5], b: [2, 5], c: "", f: [0, 5], t: [1, 5]},
            {a: [2, 0], b: [2, 3], c: "", f: [0, 5], t: [2, 2]},
            {a: [2, 5], b: [3, 0], c: "a\nb", f: [0, 5], t: [2, 5]},
-           {a: [2, 3], b: [3, 0], c: "x", f: [0, 5], t: [2, 4]},
+           {a: [2, 3], b: [3, 0], c: "x", f: [0, 5], t: [2, 3]},
            {a: [1, 1], b: [1, 9], c: "1\n2\n3", f: [0, 5], t: [4, 5]}], function(test) {
     cm.setValue("aaaaaaaaaa\nbbbbbbbbbb\ncccccccccc\ndddddddd\n");
-    var r = cm.markText({line: 0, ch: 5}, {line: 2, ch: 5}, "foo");
+    var r = cm.markText({line: 0, ch: 5}, {line: 2, ch: 5}, "CodeMirror-matchingbracket");
     cm.replaceRange(test.c, p(test.a), p(test.b));
     var f = r.find();
-    eqPos(f.from, p(test.f)); eqPos(f.to, p(test.t));
+    eqPos(f && f.from, p(test.f)); eqPos(f && f.to, p(test.t));
   });
 });
+
+testCM("markTextUndo", function(cm) {
+  var marker1 = cm.markText({line: 0, ch: 1}, {line: 0, ch: 3}, "CodeMirror-matchingbracket");
+  var marker2 = cm.markText({line: 0, ch: 0}, {line: 2, ch: 1}, "CodeMirror-matchingbracket");
+  var bookmark = cm.setBookmark({line: 1, ch: 5});
+  cm.replaceRange("foo", {line: 0, ch: 2});
+  cm.replaceRange("bar\baz\bug\n", {line: 2, ch: 0}, {line: 3, ch: 0});
+  cm.setValue("");
+  eq(marker1.find(), null); eq(marker2.find(), null); eq(bookmark.find(), null);
+  cm.undo();
+  eqPos(bookmark.find(), {line: 1, ch: 5});
+  cm.undo(); cm.undo();
+  var m1Pos = marker1.find(), m2Pos = marker2.find();
+  eqPos(m1Pos.from, {line: 0, ch: 1}); eqPos(m1Pos.to, {line: 0, ch: 3});
+  eqPos(m2Pos.from, {line: 0, ch: 0}); eqPos(m2Pos.to, {line: 2, ch: 1});
+  eqPos(bookmark.find(), {line: 1, ch: 5});
+}, {value: "1234\n56789\n00\n"});
 
 testCM("markClearBetween", function(cm) {
   cm.setValue("aaa\nbbb\nccc\nddd\n");
@@ -322,7 +346,7 @@ testCM("scrollSnap", function(cm) {
   cm.setCursor({line: 100, ch: 180});
   cm.setCursor({line: 199, ch: 0});
   info = cm.getScrollInfo();
-  is(info.x == 0 && info.y == info.height - 100, "scrolled clean to bottom");
+  is(info.x == 0 && info.y > info.height - 100, "scrolled clean to bottom");
 });
 
 testCM("selectionPos", function(cm) {
@@ -357,7 +381,7 @@ testCM("selectionPos", function(cm) {
     }
   }
   is(sawTop && sawBottom && sawMiddle, "all parts");
-});
+}, null, ie_lt8);
 
 testCM("restoreHistory", function(cm) {
   cm.setValue("abc\ndef");
@@ -464,4 +488,185 @@ testCM("wrappingAndResizing", function(cm) {
     var coords = cm.charCoords(pos);
     eqPos(pos, cm.coordsChar({x: coords.x + 2, y: coords.y + 2}));
   });
+}, null, ie_lt8);
+
+testCM("measureEndOfLine", function(cm) {
+  cm.setSize(null, "auto");
+  var inner = byClassName(cm.getWrapperElement(), "CodeMirror-lines")[0].firstChild;
+  var w = 20, lh = inner.offsetHeight;
+  for (var step = 10;; w += step) {
+    cm.setSize(w);
+    if (inner.offsetHeight < 2.5 * lh) {
+      if (step == 10) { w -= 10; step = 1; }
+      else { break; }
+    }
+  }
+  cm.setValue(cm.getValue() + "\n\n");
+  var endPos = cm.charCoords({line: 0, ch: 18}, "local");
+  is(endPos.y > lh * .8, "not at top");
+  is(endPos.x > w - 20, "not at right");
+  endPos = cm.charCoords({line: 0, ch: 18});
+  eqPos(cm.coordsChar({x: endPos.x, y: endPos.y + 2}), {line: 0, ch: 18});
+}, {mode: "text/html", value: "<!-- foo barrr -->", lineWrapping: true}, ie_lt8);
+
+testCM("scrollVerticallyAndHorizontally", function(cm) {
+  cm.setSize(100, 100);
+  addDoc(cm, 40, 40);
+  cm.setCursor(39);
+  var wrap = cm.getWrapperElement(), bar = byClassName(wrap, "CodeMirror-scrollbar")[0];
+  is(bar.offsetHeight < wrap.offsetHeight, "vertical scrollbar limited by horizontal one");
+  var cursorBox = byClassName(wrap, "CodeMirror-cursor")[0].getBoundingClientRect();
+  var editorBox = wrap.getBoundingClientRect();
+  is(cursorBox.bottom < editorBox.top + cm.getScrollerElement().clientHeight,
+     "bottom line visible");
+}, {gutter: true});
+
+testCM("moveV stuck", function(cm) {
+  var lines = byClassName(cm.getWrapperElement(), "CodeMirror-lines")[0].firstChild, h0 = lines.offsetHeight;
+  var val = "fooooooooooooooooooooooooo baaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaar\n";
+  cm.setValue(val);
+  for (var w = 50;; w += 5) {
+    cm.setSize(w);
+    if (lines.offsetHeight <= 3 * h0) break;
+  }
+  cm.setCursor({line: 0, ch: val.length - 1});
+  cm.moveV(-1, "line");
+  eqPos(cm.getCursor(), {line: 0, ch: 26});
+}, {lineWrapping: true}, ie_lt8);
+
+testCM("clickTab", function(cm) {
+  var p0 = cm.charCoords({line: 0, ch: 0}), p1 = cm.charCoords({line: 0, ch: 1});
+  eqPos(cm.coordsChar({x: p0.x + 5, y: p0.y + 5}), {line: 0, ch: 0});
+  eqPos(cm.coordsChar({x: p1.x - 5, y: p1.y + 5}), {line: 0, ch: 1});
+}, {value: "\t\n\n", lineWrapping: true, tabSize: 8});
+
+testCM("verticalScroll", function(cm) {
+  cm.setSize(100, 200);
+  cm.setValue("foo\nbar\nbaz\n");
+  var sc = cm.getScrollerElement(), baseWidth = sc.scrollWidth;
+  cm.setLine(0, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaah");
+  is(sc.scrollWidth > baseWidth, "scrollbar present");
+  cm.setLine(0, "foo");
+  eq(sc.scrollWidth, baseWidth, "scrollbar gone");
+  cm.setLine(0, "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaah");
+  cm.setLine(1, "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbh");
+  is(sc.scrollWidth > baseWidth, "present again");
+  var curWidth = sc.scrollWidth;
+  cm.setLine(0, "foo");
+  is(sc.scrollWidth < curWidth, "scrollbar smaller");
+  is(sc.scrollWidth > baseWidth, "but still present");
 });
+
+testCM("extraKeys", function(cm) {
+  var outcome;
+  function fakeKey(expected, code, props) {
+    if (typeof code == "string") code = code.charCodeAt(0);
+    var e = {type: "keydown", keyCode: code, preventDefault: function(){}, stopPropagation: function(){}};
+    if (props) for (var n in props) e[n] = props[n];
+    outcome = null;
+    cm.triggerOnKeyDown(e);
+    eq(outcome, expected);
+  }
+  CodeMirror.commands.testCommand = function() {outcome = "tc";};
+  CodeMirror.commands.goTestCommand = function() {outcome = "gtc";};
+  cm.setOption("extraKeys", {"Shift-X": function() {outcome = "sx";},
+                             "X": function() {outcome = "x";},
+                             "Ctrl-Alt-U": function() {outcome = "cau";},
+                             "End": "testCommand",
+                             "Home": "goTestCommand",
+                             "Tab": false});
+  fakeKey(null, "U");
+  fakeKey("cau", "U", {ctrlKey: true, altKey: true});
+  fakeKey(null, "U", {shiftKey: true, ctrlKey: true, altKey: true});
+  fakeKey("x", "X");
+  fakeKey("sx", "X", {shiftKey: true});
+  fakeKey("tc", 35);
+  fakeKey(null, 35, {shiftKey: true});
+  fakeKey("gtc", 36);
+  fakeKey("gtc", 36, {shiftKey: true});
+  fakeKey(null, 9);
+});
+
+testCM("wordMovementCommands", function(cm) {
+  cm.execCommand("goWordLeft");
+  eqPos(cm.getCursor(), {line: 0, ch: 0});
+  cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 0, ch: 7});
+  cm.execCommand("goWordLeft");
+  eqPos(cm.getCursor(), {line: 0, ch: 5});
+  cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 0, ch: 12});
+  cm.execCommand("goWordLeft");
+  eqPos(cm.getCursor(), {line: 0, ch: 9});
+  cm.execCommand("goWordRight"); cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 1, ch: 1});
+  cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 1, ch: 9});
+  cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 1, ch: 13});
+  cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), {line: 2, ch: 0});
+}, {value: "this is (the) firstline.\na foo12\u00e9\u00f8\u00d7bar\n"});
+
+testCM("charMovementCommands", function(cm) {
+  cm.execCommand("goCharLeft"); cm.execCommand("goColumnLeft");
+  eqPos(cm.getCursor(), {line: 0, ch: 0});
+  cm.execCommand("goCharRight"); cm.execCommand("goCharRight");
+  eqPos(cm.getCursor(), {line: 0, ch: 2});
+  cm.setCursor({line: 1, ch: 0});
+  cm.execCommand("goColumnLeft");
+  eqPos(cm.getCursor(), {line: 1, ch: 0});
+  cm.execCommand("goCharLeft");
+  eqPos(cm.getCursor(), {line: 0, ch: 5});
+  cm.execCommand("goColumnRight");
+  eqPos(cm.getCursor(), {line: 0, ch: 5});
+  cm.execCommand("goCharRight");
+  eqPos(cm.getCursor(), {line: 1, ch: 0});
+  cm.execCommand("goLineEnd");
+  eqPos(cm.getCursor(), {line: 1, ch: 5});
+  cm.execCommand("goLineStartSmart");
+  eqPos(cm.getCursor(), {line: 1, ch: 1});
+  cm.execCommand("goLineStartSmart");
+  eqPos(cm.getCursor(), {line: 1, ch: 0});
+  cm.setCursor({line: 2, ch: 0});
+  cm.execCommand("goCharRight"); cm.execCommand("goColumnRight");
+  eqPos(cm.getCursor(), {line: 2, ch: 0});
+}, {value: "line1\n ine2\n"});
+
+testCM("verticalMovementCommands", function(cm) {
+  cm.execCommand("goLineUp");
+  eqPos(cm.getCursor(), {line: 0, ch: 0});
+  cm.execCommand("goLineDown");
+  eqPos(cm.getCursor(), {line: 1, ch: 0});
+  cm.setCursor({line: 1, ch: 12});
+  cm.execCommand("goLineDown");
+  eqPos(cm.getCursor(), {line: 2, ch: 5});
+  cm.execCommand("goLineDown");
+  eqPos(cm.getCursor(), {line: 3, ch: 0});
+  cm.execCommand("goLineUp");
+  eqPos(cm.getCursor(), {line: 2, ch: 5});
+  cm.execCommand("goLineUp");
+  eqPos(cm.getCursor(), {line: 1, ch: 12});
+  cm.execCommand("goPageDown");
+  eqPos(cm.getCursor(), {line: 5, ch: 0});
+  cm.execCommand("goPageDown"); cm.execCommand("goLineDown");
+  eqPos(cm.getCursor(), {line: 5, ch: 0});
+  cm.execCommand("goPageUp");
+  eqPos(cm.getCursor(), {line: 0, ch: 0});
+}, {value: "line1\nlong long line2\nline3\n\nline5\n"});
+
+testCM("verticalMovementCommandsWrapping", function(cm) {
+  cm.setSize(120);
+  cm.setCursor({line: 0, ch: 5});
+  cm.execCommand("goLineDown");
+  eq(cm.getCursor().line, 0);
+  is(cm.getCursor().ch > 5, "moved beyond wrap");
+  for (var i = 0; ; ++i) {
+    is(i < 20, "no endless loop");
+    cm.execCommand("goLineDown");
+    var cur = cm.getCursor();
+    if (cur.line == 1) eq(cur.ch, 5);
+    if (cur.line == 2) { eq(cur.ch, 1); break; }
+  }
+}, {value: "a very long line that wraps around somehow so that we can test cursor movement\nshortone\nk",
+    lineWrapping: true});

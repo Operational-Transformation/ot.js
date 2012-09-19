@@ -70,7 +70,7 @@
     for (var prop in o) if (o.hasOwnProperty(prop)) f(prop, o[prop]);
   }
   function iterList(l, f) {
-    for (var i in l) f(l[i]);
+    for (var i = 0; i < l.length; ++i) f(l[i]);
   }
   function toLetter(ch) {
     // T -> t, Shift-T -> T, '*' -> *, "Space" -> " "
@@ -229,7 +229,8 @@
     else f(prompt(shortText, ""));
   }
   function showAlert(cm, text) {
-    if (cm.openDialog) cm.openDialog(CodeMirror.htmlEscape(text) + " <button type=button>OK</button>");
+    var esc = text.replace(/[<&]/, function(ch) { return ch == "<" ? "&lt;" : "&amp;"; });
+    if (cm.openDialog) cm.openDialog(esc + " <button type=button>OK</button>");
     else alert(text);
   }
 
@@ -502,13 +503,16 @@
     setupPrefixBindingForKey(toCombo(ch));
     setupPrefixBindingForKey(toCombo(ch.toLowerCase()));
   }
-  iterList(SPECIAL_SYMBOLS, function (ch) {
-    setupPrefixBindingForKey(toCombo(ch));
-  });
+  for (var i = 0; i < SPECIAL_SYMBOLS.length; ++i) {
+    setupPrefixBindingForKey(toCombo(SPECIAL_SYMBOLS.charAt(i)));
+  }
   setupPrefixBindingForKey("Space");
 
   CodeMirror.keyMap["vim-prefix-y"] = {
-    "Y": countTimes(function(cm) { pushInBuffer("\n"+cm.getLine(cm.getCursor().line+yank)); yank++; }),
+    "Y": countTimes(function(cm) {
+      pushInBuffer("\n"+cm.getLine(cm.getCursor().line+yank)); yank++;
+      cm.setOption("keyMap", "vim");
+    }),
     "'": function(cm) {cm.setOption("keyMap", "vim-prefix-y'"); emptyBuffer();},
     nofallthrough: true, style: "fat-cursor"
   };

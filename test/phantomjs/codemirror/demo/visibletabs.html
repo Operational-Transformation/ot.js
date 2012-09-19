@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8">
     <title>CodeMirror: Visible tabs demo</title>
     <link rel="stylesheet" href="../lib/codemirror.css">
     <script src="../lib/codemirror.js"></script>
@@ -9,16 +10,10 @@
 
     <style type="text/css">
       .CodeMirror {border-top: 1px solid #eee; border-bottom: 1px solid #eee;}
-      .cm-tab:after {
-        content: "\21e5";
-        display: -moz-inline-block;
-        display: -webkit-inline-block;
-        display: inline-block;
-        width: 0px;
-        position: relative;
-        overflow: visible;
-        left: -1.4em;
-        color: #aaa;
+      .cm-tab {
+         background: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADAAAAAMCAYAAAAkuj5RAAAAAXNSR0IArs4c6QAAAGFJREFUSMft1LsRQFAQheHPowAKoACx3IgEKtaEHujDjORSgWTH/ZOdnZOcM/sgk/kFFWY0qV8foQwS4MKBCS3qR6ixBJvElOobYAtivseIE120FaowJPN75GMu8j/LfMwNjh4HUpwg4LUAAAAASUVORK5CYII=);
+         background-position: right;
+         background-repeat: no-repeat;
       }
     </style>
   </head>
@@ -42,10 +37,7 @@ int getchar(void)
 </textarea></form>
 
 <p>Tabs inside the editor are spans with the
-class <code>cm-tab</code>, and can be styled. This demo uses
-an <code>:after</code> pseudo-class CSS hack that will not work on old
-browsers. You can use a more conservative technique like a background
-image as an alternative.</p>
+class <code>cm-tab</code>, and can be styled.
 
     <script>
       var editor = CodeMirror.fromTextArea(document.getElementById("code"), {

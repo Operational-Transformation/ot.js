@@ -1,28 +1,23 @@
 <!doctype html>
 <html>
   <head>
+    <meta charset="utf-8"/>
     <title>CodeMirror</title>
     <link rel="stylesheet" type="text/css" href="http://fonts.googleapis.com/css?family=Droid+Sans|Droid+Sans:bold"/>
     <link rel="stylesheet" type="text/css" href="doc/docs.css"/>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
     <link rel="alternate" href="http://twitter.com/statuses/user_timeline/242283288.rss" type="application/rss+xml"/>
   </head>
-  <body style="margin-top: 9em">
-
-<div style="background: #eee; border-bottom: 2px solid #df0019; position: absolute; left: 0; top: 0; right: 0; padding: 18px 0;">
-  <div style="max-width: 64.3em; margin: 0 auto;">
-    <a href="http://www.pledgie.com/campaigns/17784">
-      <img style="width: 149px; height: 37px; vertical-align: bottom" alt='Click here to lend your support to: Fund CodeMirror development and make a donation at www.pledgie.com !' src='http://www.pledgie.com/campaigns/17784.png?skin_name=chrome' border=0/>
-    </a> &nbsp; <span style="font-size: 1.23em; font-weight: bold;">Please check out our development fundraiser.
-  </div>
-</div>
+  <body>
 
 <h1><span class="logo-braces">{ }</span> <a href="http://codemirror.net/">CodeMirror</a></h1>
 
-<pre class="grey">
-<img src="doc/baboon.png" class="logo" alt="logo"/>/* In-browser code editing
+<div class="grey">
+<img src="doc/baboon.png" class="logo" alt="logo"/>
+<pre>
+/* In-browser code editing
    made bearable */
 </pre>
+</div>
 
 <div class="clear"><div class="left blk">
 
@@ -43,6 +38,7 @@
       <li><a href="mode/clike/index.html">C, C++, C#</a></li>
       <li><a href="mode/clojure/index.html">Clojure</a></li>
       <li><a href="mode/coffeescript/index.html">CoffeeScript</a></li>
+      <li><a href="mode/commonlisp/index.html">Common Lisp</a></li>
       <li><a href="mode/css/index.html">CSS</a></li>
       <li><a href="mode/diff/index.html">diff</a></li>
       <li><a href="mode/ecl/index.html">ECL</a></li>
@@ -77,6 +73,7 @@
       <li><a href="mode/clike/scala.html">Scala</a></li>
       <li><a href="mode/scheme/index.html">Scheme</a></li>
       <li><a href="mode/shell/index.html">Shell</a></li>
+      <li><a href="mode/sieve/index.html">Sieve</a></li>
       <li><a href="mode/smalltalk/index.html">Smalltalk</a></li>
       <li><a href="mode/smarty/index.html">Smarty</a></li>
       <li><a href="mode/sparql/index.html">SPARQL</a></li>
@@ -127,10 +124,12 @@
       <li><a href="http://brackets.io">Adobe Brackets</a> (code editor)</li>
       <li><a href="http://www.mergely.com/">Mergely</a> (interactive diffing)</li>
       <li><a href="https://script.google.com/">Google Apps Script</a></li>
+      <li><a href="https://github.com/github/android">GitHub's Android app</a></li>
       <li><a href="http://eloquentjavascript.net/chapter1.html">Eloquent JavaScript</a> (book)</li>
       <li><a href="http://media.chikuyonok.ru/codemirror2/">Zen Coding</a> (fast XML editing)</li>
       <li><a href="http://paperjs.org/">Paper.js</a> (graphics scripting)</li>
       <li><a href="http://tour.golang.org">Go language tour</a></li>
+      <li><a href="http://codev.it/">Codev</a> (collaborative IDE)</li>
       <li><a href="http://enjalot.com/tributary/2636296/sinwaves.js">Tributary</a> (augmented editing)</li>
       <li><a href="http://prose.io/">Prose.io</a> (github content editor)</li>
       <li><a href="http://www.wescheme.org/">WeScheme</a> (learning tool)</li>
@@ -146,6 +145,7 @@
       <li><a href="http://cssdeck.com/">CSSDeck</a> (CSS showcase)</li>
       <li><a href="http://www.ckwnc.com/">CKWNC</a> (UML editor)</li>
       <li><a href="http://www.sketchpatch.net/labs/livecodelabIntro.html">sketchPatch Livecodelab</a></li>
+      <li><a href="https://notex.ch">NoTex</a> (rST authoring)</li>
     </ul>
 
   </div></div>
@@ -156,17 +156,17 @@
   href="LICENSE">MIT-style</a> license. To get it, you can download
   the <a href="http://codemirror.net/codemirror.zip">latest
   release</a> or the current <a
-  href="http://codemirror.net/codemirror2-latest.zip">development
+  href="http://codemirror.net/codemirror-latest.zip">development
   snapshot</a> as zip files. To create a custom minified script file,
   you can use the <a href="doc/compress.html">compression API</a>.</p>
 
   <p>We use <a href="http://git-scm.com/">git</a> for version control.
   The main repository can be fetched in this way:</p>
 
-  <pre class="code">git clone http://marijnhaverbeke.nl/git/codemirror2</pre>
+  <pre class="code">git clone http://marijnhaverbeke.nl/git/codemirror</pre>
 
   <p>CodeMirror can also be found on GitHub at <a
-  href="http://github.com/marijnh/CodeMirror2">marijnh/CodeMirror2</a>.
+  href="http://github.com/marijnh/CodeMirror">marijnh/CodeMirror</a>.
   If you plan to hack on the code and contribute patches, the best way
   to do it is to create a GitHub fork, and send pull requests.</p>
 
@@ -178,26 +178,34 @@
 
   <p>For those who want to learn more about the code, there is
   an <a href="doc/internals.html">overview of the internals</a> available.
-  The <a href="http://github.com/marijnh/CodeMirror2">source code</a>
+  The <a href="http://github.com/marijnh/CodeMirror">source code</a>
   itself is, for the most part, also well commented.</p>
 
   <h2 id="support">Support and bug reports</h2>
 
-  <p>There is
-  a <a href="http://groups.google.com/group/codemirror">Google
-  group</a> (a sort of mailing list/newsgroup thing) for discussion
-  and news related to CodeMirror. When reporting a bug,
-  <a href="doc/reporting.html">read this first</a>. If you have
-  a <a href="http://github.com">github</a> account,
-  simply <a href="http://github.com/marijnh/CodeMirror2/issues">open
-  an issue there</a>. Otherwise, post something to
-  the <a href="http://groups.google.com/group/codemirror">group</a>,
-  or e-mail me directly: <a href="mailto:marijnh@gmail.com">Marijn
-  Haverbeke</a>.</p>
+  <p>Community discussion, questions, and informal bug reporting is
+  done on
+  the <a href="http://groups.google.com/group/codemirror">CodeMirror
+  Google group</a>. There is a separate
+  group, <a href="http://groups.google.com/group/codemirror-announce">CodeMirror-announce</a>,
+  which is lower-volume, and is only used for major announcements—new
+  versions and such. These will be cross-posted to both groups, so you
+  don't need to subscribe to both.</p>
+
+  <p>Though bug reports through e-mail are responded to, the preferred
+  way to report bugs is to use
+  the <a href="http://github.com/marijnh/CodeMirror/issues">Github
+  issue tracker</a>. Before reporting a
+  bug, <a href="doc/reporting.html">read these pointers</a>. Also,
+  the issue tracker is for <em>bugs</em>, not requests for help.</p>
+
+  <p>When none of these seem fitting, you can
+  simply <a href="mailto:marijnh@gmail.com">e-mail the maintainer</a>
+  directly.</p>
 
   <h2 id="supported">Supported browsers</h2>
 
-  <p>The following browsers are able to run CodeMirror:</p>
+  <p>The following <em>desktop</em> browsers are able to run CodeMirror:</p>
 
   <ul>
     <li>Firefox 2 or higher</li>
@@ -215,6 +223,10 @@
   relying on the community to tell me when something breaks.
   See <a href="#support">here</a> for information on how to contact
   me.</p>
+
+  <p>Mobile browsers mostly kind of work, but, because of limitations
+  and their fundamentally different UI assumptions, show a lot of
+  quirks that are hard to work around.</p>
 
   <h2 id="commercial">Commercial support</h2>
 
@@ -264,10 +276,52 @@
 
   <ul>
     <li><a href="doc/manual.html">User manual</a></li>
-    <li><a href="http://github.com/marijnh/CodeMirror2">Browse the code</a></li>
+    <li><a href="http://github.com/marijnh/CodeMirror">Browse the code</a></li>
   </ul>
 
   <h2 id=releases>Releases</h2>
+
+  <p class="rel">19-09-2012: <a href="http://codemirror.net/codemirror-2.34.zip">Version 2.34</a>:</p>
+
+  <ul class="rel-note">
+    <li>New mode: <a href="mode/commonlisp/index.html">Common Lisp</a>.</li>
+    <li>Fix right-click select-all on most browsers.</li>
+    <li>Change the way highlighting happens:<br>&nbsp; Saves memory and CPU cycles.<br>&nbsp; <code>compareStates</code> is no longer needed.<br>&nbsp; <code>onHighlightComplete</code> no longer works.</li>
+    <li>Integrate mode (Markdown, XQuery, CSS, sTex) tests in central testsuite.</li>
+    <li>Add a <a href="doc/manual.html#version"><code>CodeMirror.version</code></a> property.</li>
+    <li>More robust handling of nested modes in <a href="demo/formatting.html">formatting</a> and <a href="demo/closetag.html">closetag</a> plug-ins.</li>
+    <li>Un/redo now preserves <a href="doc/manual.html#markText">marked text</a> and bookmarks.</li>
+    <li><a href="https://github.com/marijnh/CodeMirror/compare/v2.33...v2.34">Full list</a> of patches.</li>
+  </ul>
+
+  <p class="rel">19-09-2012: <a href="http://codemirror.net/codemirror-3.0beta1.zip">Version 3.0, beta 1</a>:</p>
+
+  <p class="rel-note"><strong>BETA release, new major version</strong>. Only partially
+  backwards-compatible. See
+  the <a href="http://codemirror.net/3/doc/upgrade_v3.html">upgrading
+  guide</a> for more information. Major new features are:</p>
+
+  <ul class="rel-note">
+    <li>Bi-directional text support.</li>
+    <li>More powerful gutter model.</li>
+    <li>Support for arbitrary text/widget height.</li>
+    <li>In-line widgets.</li>
+    <li>Generalized event handling.</li>
+  </ul>
+
+  <p class="rel">23-08-2012: <a href="http://codemirror.net/codemirror-2.33.zip">Version 2.33</a>:</p>
+
+  <ul class="rel-note">
+    <li>New mode: <a href="mode/sieve/index.html">Sieve</a>.</li>
+    <li>New <a href="doc/manual.html#getViewport"><code>getViewPort</code></a> and <a href="doc/manual.html#option_onViewportChange"><code>onViewportChange</code></a> API.</li>
+    <li><a href="doc/manual.html#option_cursorBlinkRate">Configurable</a> cursor blink rate.</li>
+    <li>Make binding a key to <code>false</code> disabling handling (again).</li>
+    <li>Show non-printing characters as red dots.</li>
+    <li>More tweaks to the scrolling model.</li>
+    <li>Expanded testsuite. Basic linter added.</li>
+    <li>Remove most uses of <code>innerHTML</code>. Remove <code>CodeMirror.htmlEscape</code>.</li>
+    <li><a href="https://github.com/marijnh/CodeMirror/compare/v2.32...v2.33">Full list</a> of patches.</li>
+  </ul>
 
   <p class="rel">23-07-2012: <a href="http://codemirror.net/codemirror-2.32.zip">Version 2.32</a>:</p>
 
@@ -284,7 +338,7 @@
     <li>Add <a href="doc/manual.html#getHistory"><code>getHistory</code></a> and <a href="doc/manual.html#setHistory"><code>setHistory</code></a> methods.</li>
     <li>Allow custom line separator string in <a href="doc/manual.html#getValue"><code>getValue</code></a> and <a href="doc/manual.html#getRange"><code>getRange</code></a>.</li>
     <li>Support double- and triple-click drag, double-clicking whitespace.</li>
-    <li>And more... <a href="https://github.com/marijnh/CodeMirror2/compare/v2.3...v2.31">(all patches)</a></li>
+    <li>And more... <a href="https://github.com/marijnh/CodeMirror/compare/v2.3...v2.31">(all patches)</a></li>
   </ul>
 
   <p class="rel">22-06-2012: <a href="http://codemirror.net/codemirror-2.3.zip">Version 2.3</a>:</p>
@@ -296,7 +350,7 @@
     <li>Add <a href="demo/multiplex.html">mode-multiplexing</a> utility script.</li>
     <li>Fix bug where right-click paste works in read-only mode.</li>
     <li>Add a <a href="doc/manual.html#getScrollInfo"><code>getScrollInfo</code></a> method.</li>
-    <li>Lots of other <a href="https://github.com/marijnh/CodeMirror2/compare/v2.25...v2.3">fixes</a>.</li>
+    <li>Lots of other <a href="https://github.com/marijnh/CodeMirror/compare/v2.25...v2.3">fixes</a>.</li>
   </ul>
 
   <p class="rel">23-05-2012: <a href="http://codemirror.net/codemirror-2.25.zip">Version 2.25</a>:</p>
@@ -401,41 +455,6 @@
     to <a href="doc/manual.html#posFromIndex"><code>posFromIndex</code></a>,
     add <a href="doc/manual.html#indexFromPos"><code>indexFromPos</code></a>
     method.</li>
-  </ul>
-
-  <p class="rel">21-11-2011: <a href="http://codemirror.net/codemirror-2.18.zip">Version 2.18</a>:</p>
-  <p class="rel-note">Fixes <code>TextMarker.clear</code>, which is broken in 2.17.</p>
-
-  <p class="rel">21-11-2011: <a href="http://codemirror.net/codemirror-2.17.zip">Version 2.17</a>:</p>
-  <ul class="rel-note">
-    <li>Add support for <a href="doc/manual.html#option_lineWrapping">line
-    wrapping</a> and <a href="doc/manual.html#hideLine">code
-    folding</a>.</li>
-    <li>Add <a href="mode/gfm/index.html">Github-style Markdown</a> mode.</li>
-    <li>Add <a href="theme/monokai.css">Monokai</a>
-    and <a href="theme/rubyblue.css">Rubyblue</a> themes.</li>
-    <li>Add <a href="doc/manual.html#setBookmark"><code>setBookmark</code></a> method.</li>
-    <li>Move some of the demo code into reusable components
-    under <a href="lib/util/"><code>lib/util</code></a>.</li>
-    <li>Make screen-coord-finding code faster and more reliable.</li>
-    <li>Fix drag-and-drop in Firefox.</li>
-    <li>Improve support for IME.</li>
-    <li>Speed up content rendering.</li>
-    <li>Fix browser's built-in search in Webkit.</li>
-    <li>Make double- and triple-click work in IE.</li>
-    <li>Various fixes to modes.</li>
-  </ul>
-
-  <p class="rel">27-10-2011: <a href="http://codemirror.net/codemirror-2.16.zip">Version 2.16</a>:</p>
-  <ul class="rel-note">
-    <li>Add <a href="mode/perl/index.html">Perl</a>, <a href="mode/rust/index.html">Rust</a>, <a href="mode/tiddlywiki/index.html">TiddlyWiki</a>, and <a href="mode/groovy/index.html">Groovy</a> modes.</li>
-    <li>Dragging text inside the editor now moves, rather than copies.</li>
-    <li>Add a <a href="doc/manual.html#coordsFromIndex"><code>coordsFromIndex</code></a> method.</li>
-    <li><strong>API change</strong>: <code>setValue</code> now no longer clears history. Use <a href="doc/manual.html#clearHistory"><code>clearHistory</code></a> for that.</li>
-    <li><strong>API change</strong>: <a href="doc/manual.html#markText"><code>markText</code></a> now
-    returns an object with <code>clear</code> and <code>find</code>
-    methods. Marked text is now more robust when edited.</li>
-    <li>Fix editing code with tabs in Internet Explorer.</li>
   </ul>
 
   <p><a href="doc/oldrelease.html">Older releases...</a></p>
