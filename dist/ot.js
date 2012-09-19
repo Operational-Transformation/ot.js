@@ -740,7 +740,6 @@ if (typeof module === 'object') {
         } else if (op.delete) {
           var from = cm.posFromIndex(index);
           var to   = cm.posFromIndex(index + op.delete);
-          // Check if the deleted characters match CodeMirror's content
           cm.replaceRange('', from, to);
         }
       }
@@ -829,11 +828,11 @@ if (typeof module === 'object') {
       this.listEl.appendChild(this.li);
     }
 
-    this.cursorEl = document.createElement('div');
+    this.cursorEl = document.createElement('pre');
     this.cursorEl.className = 'other-client';
-    this.pre = document.createElement('pre');
-    this.pre.innerHTML = '&nbsp;';
-    this.cursorEl.appendChild(this.pre);
+    this.cursorEl.style.borderLeftWidth = '2px';
+    this.cursorEl.style.borderLeftStyle = 'solid';
+    this.cursorEl.innerHTML = '&nbsp;';
 
     if (typeof cursor === 'number' && typeof selectionEnd === 'number') {
       this.updateCursor(cursor, selectionEnd);
@@ -846,7 +845,7 @@ if (typeof module === 'object') {
 
     var color = hsl2hex(hue, 0.75, 0.5);
     if (this.li) { this.li.style.color = color; }
-    this.pre.style.borderLeftColor = color;
+    this.cursorEl.style.borderLeftColor = color;
 
     var lightColor = hsl2hex(hue, 0.5, 0.9);
     var selector = '.' + this.selectionClassName;
@@ -870,15 +869,20 @@ if (typeof module === 'object') {
     this.cursor = cursor;
     this.selectionEnd = selectionEnd;
 
-    var cursorPos = cm.posFromIndex(cursor);
     removeElement(this.cursorEl);
-    this.cm.addWidget(cursorPos, this.cursorEl, false);
-
     if (this.mark) {
       this.mark.clear();
       delete this.mark;
     }
-    if (cursor !== selectionEnd) {
+
+    var cursorPos = cm.posFromIndex(cursor);
+    if (cursor === selectionEnd) {
+      // show cursor
+      var cursorCoords = cm.cursorCoords(cursorPos);
+      this.cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.85 + 'px';
+      this.cm.addWidget(cursorPos, this.cursorEl, false);
+    } else {
+      // show selection
       var fromPos, toPos;
       if (selectionEnd > cursor) {
         fromPos = cursorPos;
@@ -920,16 +924,12 @@ if (typeof module === 'object') {
     cm.setValue(str);
     this.oldValue = str;
 
-    var oldOnChange = cm.getOption('onChange');
-    cm.setOption('onChange', function (_, change) {
+    cm.on('change', function (_, change) {
       self.onCodeMirrorChange(change);
-      if (oldOnChange) { oldOnChange.call(this, cm, change); }
     });
 
-    var oldOnCursorActivity = cm.getOption('onCursorActivity');
-    cm.setOption('onCursorActivity', function (_) {
+    cm.on('cursorActivity', function (_) {
       self.onCodeMirrorCursorActivity();
-      if (oldOnCursorActivity) { oldOnCursorActivity.call(this, cm); }
     });
 
     cm.undo = function () { self.undo(); };

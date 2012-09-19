@@ -156,40 +156,43 @@ CodeMirror.indentRangeFinder = function(cm, line) {
 
 CodeMirror.newFoldFunction = function(rangeFinder, markText, hideEnd) {
   var folded = [];
-  if (markText == null) markText = '<div style="position: absolute; left: 2px; color:#600">&#x25bc;</div>%N%';
+  if (markText == null) markText = "\u25bc";
 
-  function isFolded(cm, n) {
+  function isFolded(handle) {
     for (var i = 0; i < folded.length; ++i) {
-      var start = cm.lineInfo(folded[i].start);
-      if (!start) folded.splice(i--, 1);
-      else if (start.line == n) return {pos: i, region: folded[i]};
+      if (folded[i].start == handle) return {pos: i, region: folded[i]};
+      if (!folded[i].start.parent) folded.splice(i--, 1);
     }
-  }
-
-  function expand(cm, region) {
-    cm.clearMarker(region.start);
-    for (var i = 0; i < region.hidden.length; ++i)
-      cm.showLine(region.hidden[i]);
   }
 
   return function(cm, line) {
     cm.operation(function() {
-      var known = isFolded(cm, line);
+      var l = cm.getLineHandle(line), known = isFolded(l);
       if (known) {
         folded.splice(known.pos, 1);
-        expand(cm, known.region);
+        cm.unfoldLines(known.region.handle);
+        cm.setGutterMarker(l, "CodeMirror-folded", null);
       } else {
         var end = rangeFinder(cm, line, hideEnd);
         if (end == null) return;
-        var hidden = [];
-        for (var i = line + 1; i < end; ++i) {
-          var handle = cm.hideLine(i);
-          if (handle) hidden.push(handle);
+        var handle = cm.foldLines(line + 1, end, true);
+        CodeMirror.on(handle, "unfold", function() {
+          cm.setGutterMarker(l, "CodeMirror-folded", null);
+        });
+        var elt = document.createElement("div");
+        elt.className = "CodeMirror-foldmarker";
+        elt.innerHTML = markText;
+        var first = cm.setGutterMarker(line, "CodeMirror-folded", elt);
+        function clear() {
+          var known = isFolded(first);
+          if (!known) return;
+          cm.unfoldLines(known.region.handle);
+          folded.splice(known.pos, 1);
         }
-        var first = cm.setMarker(line, markText);
-        var region = {start: first, hidden: hidden};
-        cm.onDeleteLine(first, function() { expand(cm, region); });
-        folded.push(region);
+        CodeMirror.on(first, "delete", clear);
+        CodeMirror.on(first, "change", clear);
+        CodeMirror.on(cm.getLineHandle(line + 1), "delete", clear);
+        folded.push({start: first, handle: handle});
       }
     });
   };

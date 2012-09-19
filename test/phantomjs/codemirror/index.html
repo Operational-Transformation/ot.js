@@ -97,6 +97,7 @@
       <li><a href="demo/complete.html">Autocompletion</a> (<a href="demo/xmlcomplete.html">XML</a>)</li>
       <li><a href="demo/search.html">Search/replace</a></li>
       <li><a href="demo/folding.html">Code folding</a></li>
+      <li><a href="demo/widget.html">Line widgets</a></li>
       <li><a href="demo/mustache.html">Mode overlays</a></li>
       <li><a href="demo/multiplex.html">Mode multiplexer</a></li>
       <li><a href="demo/preview.html">HTML editor with preview</a></li>
@@ -105,6 +106,7 @@
       <li><a href="demo/activeline.html">Highlighting the current line</a></li>
       <li><a href="demo/matchhighlighter.html">Highlighting selection matches</a></li>
       <li><a href="demo/theme.html">Theming</a></li>
+      <li><a href="demo/variableheight.html">Mixed font sizes</a></li>
       <li><a href="demo/runmode.html">Stand-alone highlighting</a></li>
       <li><a href="demo/fullscreen.html">Full-screen editing</a></li>
       <li><a href="demo/changemode.html">Mode auto-changing</a></li>
@@ -210,12 +212,15 @@
   <ul>
     <li>Firefox 2 or higher</li>
     <li>Chrome, any version</li>
-    <li>Safari 3 or higher</li>
+    <li>Safari 5.2 or higher</li>
     <li>Opera 9 or higher (with some key-handling problems on OS X)</li>
-    <li>Internet Explorer 7 or higher in standards mode<br>
-      <em>(So not quirks mode. But quasi-standards mode with a
+    <li>Internet Explorer 8 or higher in standards mode<br>
+      <em>(<strong>Not</strong> quirks mode. But quasi-standards mode with a
       transitional doctype is also flaky. <code>&lt;!doctype
       html></code> is recommended.)</em></li>
+    <li>Internet Explorer 7 (standards mode) is usable, but buggy. It
+    has a <a href="http://therealcrisp.xs4all.nl/meuk/IE-zindexbug.html">z-index
+    bug</a> that prevents CodeMirror from working properly.</li>
   </ul>
 
   <p>I am not actively testing against every new browser release, and
@@ -298,7 +303,7 @@
 
   <p class="rel-note"><strong>BETA release, new major version</strong>. Only partially
   backwards-compatible. See
-  the <a href="http://codemirror.net/3/doc/upgrade_v3.html">upgrading
+  the <a href="doc/upgrade_v3.html">upgrading
   guide</a> for more information. Major new features are:</p>
 
   <ul class="rel-note">

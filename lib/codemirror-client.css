@@ -1,8 +1,0 @@
-.other-client {
-  position: absolute;
-}
-.other-client pre {
-  border-left-width: 2px;
-  border-left-style: solid;
-  position: absolute; bottom: 100%;
-}
