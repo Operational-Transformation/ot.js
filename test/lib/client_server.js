@@ -10,17 +10,17 @@ function inherit (Const, Super) {
 }
 
 
-function MyServer (str, broadcast) {
-  Server.call(this, str);
+function MyServer (document, broadcast) {
+  Server.call(this, document);
   this.broadcast = broadcast;
 }
 
 inherit(MyServer, Server);
 
 
-function MyClient (str, revision, channel) {
+function MyClient (document, revision, channel) {
   Client.call(this, revision);
-  this.str = str;
+  this.document = document;
   this.channel = channel;
 }
 
@@ -31,12 +31,12 @@ MyClient.prototype.sendOperation = function (operation) {
 };
 
 MyClient.prototype.applyOperation = function (operation) {
-  this.str = operation.apply(this.str);
+  this.document = operation.apply(this.document);
 };
 
 MyClient.prototype.performOperation = function () {
-  var operation = h.randomOperation(this.createOperation(), this.str);
-  this.str = operation.apply(this.str);
+  var operation = h.randomOperation(this.createOperation(), this.document);
+  this.document = operation.apply(this.document);
   this.applyClient(operation);
 };
 
@@ -64,17 +64,17 @@ NetworkChannel.prototype.receive = function () {
 
 
 function testClientServerInteraction () {
-  var str = h.randomString();
-  var server = new MyServer(str, function (operation) {
+  var document = h.randomString();
+  var server = new MyServer(document, function (operation) {
     client1ReceiveChannel.write(operation);
     client2ReceiveChannel.write(operation);
   });
   var client1SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
   var client1ReceiveChannel = new NetworkChannel(function (o) { client1.applyServer(o); });
-  var client1 = new MyClient(str, 0, client1SendChannel);
+  var client1 = new MyClient(document, 0, client1SendChannel);
   var client2SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
   var client2ReceiveChannel = new NetworkChannel(function (o) { client2.applyServer(o); });
-  var client2 = new MyClient(str, 0, client2SendChannel);
+  var client2 = new MyClient(document, 0, client2SendChannel);
   var channels = [client1SendChannel, client1ReceiveChannel, client2SendChannel, client2ReceiveChannel];
 
   function canReceive () {
@@ -105,8 +105,8 @@ function testClientServerInteraction () {
     receiveRandom();
   }
 
-  h.assertEqual(server.str, client1.str);
-  h.assertEqual(client1.str, client2.str);
+  h.assertEqual(server.document, client1.document);
+  h.assertEqual(client1.document, client2.document);
 }
 
 exports.run = function () {
