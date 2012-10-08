@@ -1,6 +1,12 @@
 var Operation = require('../../lib/operation');
 var h = require('./helpers');
 
+function testConstructor () {
+  // you should be able to call the constructor without 'new'
+  var o = Operation();
+  h.assertEqual(o.constructor, Operation);
+}
+
 function testLengths () {
   var o = new Operation(0);
   h.assertEqual(0, o.baseLength);
@@ -169,6 +175,7 @@ function testTransform () {
 
 exports.run = function () {
   var n = 500;
+  testConstructor();
   testLengths();
   testChaining();
   testEmptyOps();
