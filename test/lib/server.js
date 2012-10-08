@@ -1,4 +1,4 @@
-var Operation = require('../../lib/operation');
+var TextOperation = require('../../lib/text-operation');
 var Server = require('../../lib/server');
 
 exports.run = function () {

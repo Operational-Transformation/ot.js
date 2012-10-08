@@ -1,4 +1,4 @@
-var Operation = require('../../lib/operation');
+var TextOperation = require('../../lib/text-operation');
 
 function randomInt (n) {
   return Math.floor(Math.random() * n);
@@ -14,7 +14,7 @@ function randomString (n) {
 }
 
 function randomOperation (str) {
-  var operation = new Operation();
+  var operation = new TextOperation();
   var left;
   while (left = str.length - operation.baseLength) {
     var r = Math.random();

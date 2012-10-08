@@ -1,14 +1,14 @@
-var Operation = require('../../lib/operation');
+var TextOperation = require('../../lib/text-operation');
 var h = require('./helpers');
 
 function testConstructor () {
   // you should be able to call the constructor without 'new'
-  var o = Operation();
-  h.assertEqual(o.constructor, Operation);
+  var o = TextOperation();
+  h.assertEqual(o.constructor, TextOperation);
 }
 
 function testLengths () {
-  var o = new Operation(0);
+  var o = new TextOperation();
   h.assertEqual(0, o.baseLength);
   h.assertEqual(0, o.targetLength);
   o.retain(5);
@@ -26,7 +26,7 @@ function testLengths () {
 }
 
 function testChaining () {
-  var o = new Operation(0)
+  var o = new TextOperation()
     .retain(5)
     .retain(0)
     .insert("lorem")
@@ -55,7 +55,7 @@ function testInvert () {
 }
 
 function testEmptyOps () {
-  var o = new Operation(0);
+  var o = new TextOperation();
   o.retain(0);
   o.insert('');
   o.delete('');
@@ -64,7 +64,7 @@ function testEmptyOps () {
 
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
-  var o = new Operation(0);
+  var o = new TextOperation();
   h.assertEqual(0, o.ops.length);
   o.retain(2);
   h.assertEqual(1, o.ops.length);
@@ -87,7 +87,7 @@ function testOpsMerging () {
 }
 
 function testToString () {
-  var o = new Operation(0);
+  var o = new TextOperation();
   o.retain(2);
   o.insert('lorem');
   o.delete('ipsum');
@@ -106,7 +106,7 @@ function testFromJSON () {
       { insert: "cde" }
     ]
   };
-  var o = Operation.fromJSON(obj);
+  var o = TextOperation.fromJSON(obj);
   h.assertEqual(3, o.ops.length);
   h.assertEqual(4, o.baseLength);
   h.assertEqual(5, o.targetLength);
@@ -124,7 +124,7 @@ function testFromJSON () {
   function assertIncorrectAfter (fn) {
     var obj2 = clone(obj);
     fn(obj2);
-    h.assertThrows(function () { Operation.fromJSON(obj2); });
+    h.assertThrows(function () { TextOperation.fromJSON(obj2); });
   }
 
   assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
@@ -159,7 +159,7 @@ function testTransform () {
   var str = h.randomString(20);
   var a = h.randomOperation(str);
   var b = h.randomOperation(str);
-  var primes = Operation.transform(a, b);
+  var primes = TextOperation.transform(a, b);
   var aPrime = primes[0];
   var bPrime = primes[1];
   var abPrime = a.compose(bPrime);

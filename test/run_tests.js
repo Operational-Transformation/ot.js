@@ -2,7 +2,7 @@
 
 var child_process = require('child_process');
 
-var operation_tests = require('./lib/operation');
+var text_operation_tests = require('./lib/text-operation');
 var client_tests = require('./lib/client');
 var server_tests = require('./lib/server');
 var client_server_tests = require('./lib/client_server');
@@ -42,7 +42,7 @@ function runPhantomJSTests () {
 }
 
 function main () {
-  operation_tests.run();
+  text_operation_tests.run();
   client_tests.run();
   server_tests.run();
   client_server_tests.run();
