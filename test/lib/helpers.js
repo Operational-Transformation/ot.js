@@ -13,10 +13,8 @@ function randomString (n) {
   return str;
 }
 
-function randomOperation (operation, str) {
-  if (!(operation instanceof Operation)) {
-    operation = new Operation(operation);
-  }
+function randomOperation (str) {
+  var operation = new Operation();
   var left;
   while (left = str.length - operation.baseLength) {
     var r = Math.random();

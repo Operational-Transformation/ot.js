@@ -18,16 +18,21 @@ function MyServer (document, broadcast) {
 inherit(MyServer, Server);
 
 
-function MyClient (document, revision, channel) {
+function MyClient (userId, document, revision, channel) {
   Client.call(this, revision);
+  this.userId = userId;
   this.document = document;
   this.channel = channel;
 }
 
 inherit(MyClient, Client);
 
-MyClient.prototype.sendOperation = function (operation) {
-  this.channel.write(operation);
+MyClient.prototype.sendOperation = function (revision, operation) {
+  this.channel.write({
+    userId: this.userId,
+    revision: revision,
+    operation: operation
+  });
 };
 
 MyClient.prototype.applyOperation = function (operation) {
@@ -35,7 +40,7 @@ MyClient.prototype.applyOperation = function (operation) {
 };
 
 MyClient.prototype.performOperation = function () {
-  var operation = h.randomOperation(this.createOperation(), this.document);
+  var operation = h.randomOperation(this.document);
   this.document = operation.apply(this.document);
   this.applyClient(operation);
 };
@@ -65,16 +70,36 @@ NetworkChannel.prototype.receive = function () {
 
 function testClientServerInteraction () {
   var document = h.randomString();
+  var userId;
   var server = new MyServer(document, function (operation) {
-    client1ReceiveChannel.write(operation);
-    client2ReceiveChannel.write(operation);
+    var obj = { userId: userId, operation: operation };
+    client1ReceiveChannel.write(obj);
+    client2ReceiveChannel.write(obj);
   });
-  var client1SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
-  var client1ReceiveChannel = new NetworkChannel(function (o) { client1.applyServer(o); });
-  var client1 = new MyClient(document, 0, client1SendChannel);
-  var client2SendChannel = new NetworkChannel(function (o) { server.receiveOperation(o); });
-  var client2ReceiveChannel = new NetworkChannel(function (o) { client2.applyServer(o); });
-  var client2 = new MyClient(document, 0, client2SendChannel);
+
+  function serverReceive (obj) {
+    userId = obj.userId;
+    server.receiveOperation(obj.revision, obj.operation);
+  }
+
+  function clientReceive (client) {
+    return function (obj) {
+      if (obj.userId === client.userId) {
+        client.serverAck();
+      } else {
+        client.applyServer(obj.operation);
+      }
+    };
+  }
+
+  var client1SendChannel = new NetworkChannel(serverReceive);
+  var client1 = new MyClient('alice', document, 0, client1SendChannel);
+  var client1ReceiveChannel = new NetworkChannel(clientReceive(client1));
+
+  var client2SendChannel = new NetworkChannel(serverReceive);
+  var client2 = new MyClient('bob', document, 0, client2SendChannel);
+  var client2ReceiveChannel = new NetworkChannel(clientReceive(client2));
+
   var channels = [client1SendChannel, client1ReceiveChannel, client2SendChannel, client2ReceiveChannel];
 
   function canReceive () {

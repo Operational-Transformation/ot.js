@@ -1,18 +1,6 @@
 var Operation = require('../../lib/operation');
 var h = require('./helpers');
 
-function testIDGeneration () {
-  var seen = {};
-  var n = 500;
-  while (n--) {
-    var o = new Operation(0);
-    if (seen[o.id]) {
-      throw new Error("id collision");
-    }
-    seen[o.id] = true;
-  }
-}
-
 function testLengths () {
   var o = new Operation(0);
   h.assertEqual(0, o.baseLength);
@@ -46,16 +34,15 @@ function testChaining () {
 
 function testApply () {
   var str = h.randomString(50);
-  var o = h.randomOperation(0, str);
+  var o = h.randomOperation(str);
   h.assertEqual(str.length, o.baseLength);
   h.assertEqual(o.apply(str).length, o.targetLength);
 }
 
 function testInvert () {
   var str = h.randomString(50);
-  var o = h.randomOperation(0, str);
+  var o = h.randomOperation(str);
   var p = o.invert(str);
-  h.assertEqual(p.revision, 1);
   h.assertEqual(o.baseLength, p.targetLength);
   h.assertEqual(o.targetLength, p.baseLength);
   h.assertEqual(p.apply(o.apply(str)), str);
@@ -104,11 +91,8 @@ function testToString () {
 
 function testFromJSON () {
   var obj = {
-    id: '1234',
-    revision: 3,
     baseLength: 4,
     targetLength: 5,
-    meta: { author: "Tim" },
     ops: [
       { retain: 2 },
       { delete: "a" },
@@ -117,9 +101,6 @@ function testFromJSON () {
     ]
   };
   var o = Operation.fromJSON(obj);
-  h.assertEqual('1234', o.id);
-  h.assertEqual(3, o.revision);
-  h.assertEqual("Tim", o.meta.author);
   h.assertEqual(3, o.ops.length);
   h.assertEqual(4, o.baseLength);
   h.assertEqual(5, o.targetLength);
@@ -140,10 +121,8 @@ function testFromJSON () {
     h.assertThrows(function () { Operation.fromJSON(obj2); });
   }
 
-  assertIncorrectAfter(function (obj2) { delete obj2.id; });
-  assertIncorrectAfter(function (obj2) { obj2.revision = -42; })
   assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
-  assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; })
+  assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ lorem: 'no such operation' }); });
 }
@@ -151,10 +130,10 @@ function testFromJSON () {
 function testCompose () {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = h.randomString(20);
-  var a = h.randomOperation(0, str);
+  var a = h.randomOperation(str);
   var afterA = a.apply(str);
   h.assertEqual(a.targetLength, afterA.length);
-  var b = h.randomOperation(1, afterA);
+  var b = h.randomOperation(afterA);
   var afterB = b.apply(afterA);
   h.assertEqual(b.targetLength, afterB.length);
   var ab = a.compose(b);
@@ -172,17 +151,11 @@ function testTransform () {
   // invariant: apply(str, compose(a, b')) = apply(compose(b, a'))
   // where (a', b') = transform(a, b)
   var str = h.randomString(20);
-  var a = h.randomOperation(0, str);
-  var b = h.randomOperation(0, str);
-  var abPrime = Operation.transform(a, b);
-  var aPrime = abPrime[0];
-  var bPrime = abPrime[1];
-  h.assertEqual(1, aPrime.revision);
-  h.assertEqual(a.id, aPrime.id);
-  h.assertEqual(a.meta, aPrime.meta);
-  h.assertEqual(1, bPrime.revision);
-  h.assertEqual(b.id, bPrime.id);
-  h.assertEqual(b.meta, bPrime.meta);
+  var a = h.randomOperation(str);
+  var b = h.randomOperation(str);
+  var primes = Operation.transform(a, b);
+  var aPrime = primes[0];
+  var bPrime = primes[1];
   var abPrime = a.compose(bPrime);
   var baPrime = b.compose(aPrime);
   var afterAbPrime = abPrime.apply(str);
@@ -196,7 +169,6 @@ function testTransform () {
 
 exports.run = function () {
   var n = 500;
-  testIDGeneration();
   testLengths();
   testChaining();
   testEmptyOps();
