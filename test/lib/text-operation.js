@@ -62,6 +62,15 @@ function testEmptyOps () {
   h.assertEqual(0, o.ops.length);
 }
 
+function testEquals () {
+  var op1 = new TextOperation().delete(1).insert("lo").retain(2).retain(3);
+  var op2 = new TextOperation().delete(-1).insert("l").insert("o").retain(5);
+  h.assert(op1.equals(op2));
+  op1.delete(1);
+  op2.retain(1);
+  h.assert(!op1.equals(op2));
+}
+
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
   var o = new TextOperation();
@@ -93,6 +102,12 @@ function testToString () {
   o.delete('ipsum');
   o.retain(5);
   h.assertEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
+}
+
+function testIdJSON () {
+  var doc = h.randomString(50);
+  var operation = h.randomOperation(doc);
+  h.assert(operation.equals(TextOperation.fromJSON(operation.toJSON())));
 }
 
 function testFromJSON () {
@@ -179,8 +194,10 @@ exports.run = function () {
   testLengths();
   testChaining();
   testEmptyOps();
+  testEquals();
   testOpsMerging();
   testToString();
+  testIdJSON();
   testFromJSON();
   h.times(n, testApply);
   h.times(n, testInvert);
