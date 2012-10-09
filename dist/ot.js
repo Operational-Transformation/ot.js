@@ -3,23 +3,14 @@ if (typeof ot === 'undefined') {
   var ot = {};
 }
 
-ot.Operation = (function () {
+ot.TextOperation = (function () {
 
-  // Constructor for new operations. Expects an revision number (non-negative
-  // integer) and an optional ID (string). If no ID is given, a random ID will
-  // be generated.
-  function Operation (revision, id, meta) {
-    assert(
-      typeof revision === 'number' && revision >= 0,
-      "the first parameter to the the parent revision number of the document"
-    );
-    this.revision = revision;
-    this.id = id || randomID();
-    assert(this.id && typeof this.id === 'string', "not a valid id: " + this.id);
-
-    // Place to store arbitrary data. This could be a timestamp of the edit, the
-    // name of the author, etc...
-    this.meta = meta || {};
+  // Constructor for new operations.
+  function TextOperation () {
+    if (this.constructor !== TextOperation) {
+      // => function was called without 'new'
+      return new TextOperation();
+    }
 
     // When an operation is applied to an input string, you can think of this as
     // if an imaginary cursor runs over the entire string and skips over some
@@ -39,8 +30,10 @@ ot.Operation = (function () {
   // methods. They all return the operation for convenient chaining.
 
   // Skip over a given number of characters.
-  Operation.prototype.retain = function (n) {
-    assert(typeof n === 'number' && n >= 0);
+  TextOperation.prototype.retain = function (n) {
+    if (typeof n !== 'number') {
+      throw new Error("retain expects an integer");
+    }
     if (n === 0) { return this; }
     this.baseLength += n;
     this.targetLength += n;
@@ -55,9 +48,24 @@ ot.Operation = (function () {
     return this;
   };
 
+  TextOperation.prototype.equals = function (other) {
+    if (this.baseLength !== other.baseLength) { return false; }
+    if (this.targetLength !== other.targetLength) { return false; }
+    if (this.ops.length !== other.ops.length) { return false; }
+    for (var i = 0; i < this.ops.length; i++) {
+      var t = this.ops[i], o = other.ops[i];
+      if (t.retain && t.retain !== o.retain) { return false; }
+      if (t.insert && t.insert !== o.insert) { return false; }
+      if (t.delete && t.delete !== o.delete) { return false; }
+    }
+    return true;
+  }
+
   // Insert a string at the current position.
-  Operation.prototype.insert = function (str) {
-    assert(typeof str === 'string');
+  TextOperation.prototype.insert = function (str) {
+    if (typeof str !== 'string') {
+      throw new Error("insert expects a string")
+    }
     if (str === '') { return this; }
     this.targetLength += str.length;
     var lastOp = this.ops[this.ops.length-1];
@@ -71,10 +79,13 @@ ot.Operation = (function () {
   };
 
   // Delete a string at the current position.
-  Operation.prototype.delete = function (n) {
+  TextOperation.prototype.delete = function (n) {
     if (typeof n === 'string') { n = n.length; }
-    assert(typeof n === 'number');
+    if (typeof n !== 'number') {
+      throw new Error("delete expects an integer or a string");
+    }
     if (n === 0) { return this; }
+    if (n < 0) { n = -n; }
     this.baseLength += n;
     var lastOp = this.ops[this.ops.length-1];
     if (lastOp && lastOp.delete) {
@@ -86,7 +97,7 @@ ot.Operation = (function () {
   };
 
   // Pretty printing.
-  Operation.prototype.toString = function () {
+  TextOperation.prototype.toString = function () {
     // map: build a new array by applying a function to every element in an old
     // array.
     var map = Array.prototype.map || function (fn) {
@@ -106,11 +117,14 @@ ot.Operation = (function () {
     }).join(', ');
   };
 
+  // Converts operation into a JSON value.
+  TextOperation.prototype.toJSON = function () {
+    return this;
+  };
+
   // Converts a plain JS object into an operation and validates it.
-  Operation.fromJSON = function (obj) {
-    assert(obj.id);
-    var o = new Operation(obj.revision, obj.id, obj.meta);
-    assert(typeof o.meta === 'object');
+  TextOperation.fromJSON = function (obj) {
+    var o = new TextOperation();
     var ops = obj.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
@@ -124,14 +138,18 @@ ot.Operation = (function () {
         throw new Error("unknown operation: " + JSON.stringify(op));
       }
     }
-    assert(o.baseLength === obj.baseLength, "baseLengths don't match");
-    assert(o.targetLength === obj.targetLength, "targetLengths don't match");
+    if (o.baseLength !== obj.baseLength) {
+      throw new Error("baseLengths don't match");
+    }
+    if (o.targetLength !== obj.targetLength) {
+      throw new Error("targetLengths don't match");
+    }
     return o;
   };
 
   // Apply an operation to a string, returning a new string. Throws an error if
   // there's a mismatch between the input string and the operation.
-  Operation.prototype.apply = function (str) {
+  TextOperation.prototype.apply = function (str) {
     var operation = this;
     if (str.length !== operation.baseLength) {
       throw new Error("The operation's base length must be equal to the string's length.");
@@ -165,9 +183,9 @@ ot.Operation = (function () {
   // operation that reverts the effects of the operation, e.g. when you have an
   // operation 'insert("hello "); skip(6);' then the inverse is 'delete("hello ");
   // skip(6);'. The inverse should be used for implementing undo.
-  Operation.prototype.invert = function (str) {
+  TextOperation.prototype.invert = function (str) {
     var strIndex = 0;
-    var inverse = new Operation(this.revision + 1);
+    var inverse = new TextOperation();
     var ops = this.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
@@ -184,45 +202,51 @@ ot.Operation = (function () {
     return inverse;
   };
 
-  // Compose merges to consecutive operations (they must have consecutive
-  // revision numbers) into one operation, that preserves the changes of both.
-  // Or, in other words, for each input string S and a pair of consecutive
-  // operations A and B, apply(apply(S, A), B) = apply(S, compose(A, B)) must
-  // hold.
-  Operation.prototype.compose = function (operation2) {
+  // Compose merges two consecutive operations into one operation, that
+  // preserves the changes of both. Or, in other words, for each input string S
+  // and a pair of consecutive operations A and B,
+  // apply(apply(S, A), B) = apply(S, compose(A, B)) must hold.
+  TextOperation.prototype.compose = function (operation2) {
     var operation1 = this;
     if (operation1.targetLength !== operation2.baseLength) {
       throw new Error("The base length of the second operation has to be the target length of the first operation");
     }
-    if (operation1.revision + 1 !== operation2.revision) {
-      throw new Error("The second operations revision must be one more than the first operations revision");
-    }
-    var operation = new Operation(operation1.revision, undefined, operation1.meta); // the combined operation
+
+    var operation = new TextOperation(); // the combined operation
     var ops1 = operation1.ops, ops2 = operation2.ops; // for fast access
     var i1 = 0, i2 = 0; // current index into ops1 respectively ops2
     var op1 = ops1[i1++], op2 = ops2[i2++]; // current ops
     while (true) {
-      // save length of current ops
-      var op1l = op1 && (op1.retain || op1.delete || op1.insert.length);
-      var op2l = op2 && (op2.retain || op2.delete || op2.insert.length);
-      var minl = Math.min(op1l, op2l);
       // Dispatch on the type of op1 and op2
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
         // end condition: both ops1 and ops2 have been processed
         break;
-      } else if (typeof op1 === 'undefined') {
-        if (!op2.insert) {
-          throw new Error("Successive operations can only insert new characters at the end of the string.");
-        }
-        operation.insert(op2.insert);
-        op2 = ops2[i2++];
-      } else if (typeof op2 === 'undefined') {
-        if (!op1.delete) {
-          throw new Error("The first operation can only delete at the end of operation 2.");
-        }
+      }
+
+      if (op1 && op1.delete) {
         operation.delete(op1.delete);
         op1 = ops1[i1++];
-      } else if (op1.retain && op2.retain) {
+        continue;
+      }
+      if (op2 && op2.insert) {
+        operation.insert(op2.insert);
+        op2 = ops2[i2++];
+        continue;
+      }
+
+      if (typeof op1 === 'undefined') {
+        throw new Error("Cannot compose operations: first operation is too short.");
+      }
+      if (typeof op2 === 'undefined') {
+        throw new Error("Cannot compose operations: fist operation is too long.");
+      }
+
+      // save length of current ops
+      var op1l = op1.retain || op1.delete || op1.insert.length;
+      var op2l = op2.retain || op2.delete || op2.insert.length;
+      var minl = Math.min(op1l, op2l);
+
+      if (op1.retain && op2.retain) {
         operation.retain(minl);
         if (op1l > op2l) {
           op1 = { retain: op1l - op2l };
@@ -256,7 +280,7 @@ ot.Operation = (function () {
           op2 = ops2[i2++];
         } else {
           operation.insert(op1.insert);
-          op1 =ops1[i1++];
+          op1 = ops1[i1++];
           op2 = { retain: op2l - op1l };
         }
       } else if (op1.retain && op2.delete) {
@@ -273,12 +297,6 @@ ot.Operation = (function () {
           op1 = ops1[i1++];
           op2 = { delete: op2.delete - op1l };
         }
-      } else if (op1.delete) {
-        operation.delete(op1.delete);
-        op1 = ops1[i1++];
-      } else if (op2.insert) {
-        operation.insert(op2.insert);
-        op2 = ops2[i2++];
       } else {
         throw new Error(
           "This shouldn't happen: op1: " +
@@ -294,45 +312,56 @@ ot.Operation = (function () {
   // produces two operations A' and B' (in an arry) such that
   // apply(apply(S, A), B') = apply(apply(S, B), A'). This function is the heart
   // of OT.
-  Operation.transform = function (operation1, operation2) {
+  TextOperation.transform = function (operation1, operation2) {
     if (operation1.baseLength !== operation2.baseLength) {
       throw new Error("Both operations have to have the same base length");
-    }
-    if (operation1.revision !== operation2.revision) {
-      throw new Error("Both operations have to have the same revision");
     }
 
     // Use the IDs of the two input operations. This enables clients to
     // recognize their own operations when they receive operations from the
     // server.
-    var operation1prime = new Operation(operation2.revision + 1, operation1.id, operation1.meta);
-    var operation2prime = new Operation(operation1.revision + 1, operation2.id, operation2.meta);
+    var operation1prime = new TextOperation();
+    var operation2prime = new TextOperation();
     var ops1 = operation1.ops, ops2 = operation2.ops;
     var i1 = 0, i2 = 0;
     var op1 = ops1[i1++], op2 = ops2[i2++];
     while (true) {
-      // At every iteration of the loop, the imaginary cursor that both
-      // operation1 and operation2 have that operates on the input string must
-      // have the same position in the input string.
-      var op1l = op1 && (op1.retain || op1.delete || op1.insert.length);
-      var op2l = op2 && (op2.retain || op2.delete || op2.insert.length);
-      var minl = Math.min(op1l, op2l);
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
         // end condition: both ops1 and ops2 have been processed
         break;
+      }
+
       // next two cases: one or both ops are insert ops
       // => insert the string in the corresponding prime operation, skip it in
-      // the other one
-      // If both op1 and op2 are insert ops, prefer op1.
-      } else if (op1 && op1.insert) {
+      // the other one. If both op1 and op2 are insert ops, prefer op1.
+      if (op1 && op1.insert) {
         operation1prime.insert(op1.insert);
         operation2prime.retain(op1.insert.length);
         op1 = ops1[i1++];
-      } else if (op2 && op2.insert) {
+        continue;
+      }
+      if (op2 && op2.insert) {
         operation1prime.retain(op2.insert.length);
         operation2prime.insert(op2.insert);
         op2 = ops2[i2++];
-      } else if (op1.retain && op2.retain) {
+        continue;
+      }
+
+      if (typeof op1 === 'undefined') {
+        throw new Error("Cannot compose operations: first operation is too short.");
+      }
+      if (typeof op2 === 'undefined') {
+        throw new Error("Cannot compose operations: fist operation is too long.");
+      }
+
+      // At every iteration of the loop, the imaginary cursor that both
+      // operation1 and operation2 have that operates on the input string must
+      // have the same position in the input string.
+      var op1l = op1.retain || op1.delete || op1.insert.length;
+      var op2l = op2.retain || op2.delete || op2.insert.length;
+      var minl = Math.min(op1l, op2l);
+
+      if (op1.retain && op2.retain) {
         // Simple case: retain/retain
         operation1prime.retain(minl);
         operation2prime.retain(minl);
@@ -392,35 +421,67 @@ ot.Operation = (function () {
     return [operation1prime, operation2prime];
   };
 
-  // Expects the first argument to be truthy. Raises an error otherwise.
-  function assert (b, msg) {
-    if (!b) {
-      throw new Error(msg || "assertion error");
-    }
-  }
-
-  // Pick a random integer uniformally from the interval [0;n[
-  function randomInt (n) {
-    return Math.floor(Math.random() * n);
-  }
-
-  // Generate a random ID consisting of 16 hex digits.
-  function randomID () {
-    var id = '';
-    var n = 16;
-    while (n--) {
-      id += randomInt(16).toString(16);
-    }
-    return id;
-  }
-
-  return Operation;
+  return TextOperation;
 
 })();
 
 // Export for CommonJS
 if (typeof module === 'object') {
-  module.exports = ot.Operation;
+  module.exports = ot.TextOperation;
+}if (typeof ot === 'undefined') {
+  // Export for browsers
+  var ot = {};
+}
+
+ot.WrappedOperation = (function (global) {
+
+  // A WrappedOperation contains an operation and corresponing metadata.
+  function WrappedOperation (operation, meta) {
+    this.wrapped = operation;
+    this.meta    = meta || {};
+  }
+
+  WrappedOperation.prototype.apply = function () {
+    return this.wrapped.apply.apply(this.wrapped, arguments);
+  };
+
+  WrappedOperation.prototype.invert = function () {
+    var inverted = this.wrapped.invert.apply(this.wrapped, arguments);
+    return new WrappedOperation(inverted, this.meta);
+  };
+
+  // Copy all properties from source to target.
+  function copy (source, target) {
+    for (var key in source) {
+      if (source.hasOwnProperty(key)) {
+        target[key] = source[key];
+      }
+    }
+  }
+
+  WrappedOperation.prototype.compose = function (other) {
+    var meta = {};
+    copy(this.meta, meta);
+    copy(other.meta, meta);
+    return new WrappedOperation(this.wrapped.compose(other.wrapped), meta);
+  };
+
+  WrappedOperation.transform = function (a, b) {
+    var transform = a.wrapped.constructor.transform;
+    var pair = transform(a.wrapped, b.wrapped);
+    return [
+      new WrappedOperation(pair[0], a.meta),
+      new WrappedOperation(pair[1], b.meta)
+    ];
+  };
+
+  return WrappedOperation;
+
+})(this);
+
+// Export for CommonJS
+if (typeof module === 'object') {
+  module.exports = ot.WrappedOperation;
 }// translation of https://github.com/djspiewak/cccp/blob/master/agent/src/main/scala/com/codecommit/cccp/agent/state.scala
 
 if (typeof ot === 'undefined') {
@@ -429,56 +490,30 @@ if (typeof ot === 'undefined') {
 
 ot.Client = (function (global) {
 
-  var Operation = global.ot ? global.ot.Operation : require('./operation');
-
-  // Object that can be mixed into a constructor's prototype object. Requires a
-  // 'states' property that is an object containing the possible states of the
-  // object with the associated method definitions and a 'state' property
-  // containing the name of the current state as a string.
-  var StateMachine = {
-    callMethodForState: function (method) {
-      var args = Array.prototype.slice.call(arguments, 1);
-      return this.states[this.state][method].apply(this, args);
-    },
-
-    // Transitions to a new state given by the first argument. Calls the exit
-    // method of the old state first and calls the enter method of the new state
-    // with the rest of the arguments.
-    transitionTo: function (name) {
-      var args = Array.prototype.slice.call(arguments, 1);
-      this.states[this.state].exit.apply(this, []);
-      this.states[this.state = name].enter.apply(this, args);
-    }
-  };
-
   // Client constructor
   function Client (revision) {
-    assert(typeof revision === 'number' && revision >= 0);
-    this.serverRevision = revision; // the next expected revision number
-    this.state = 'synchronized'; // start in 'synchronized' state
+    this.revision = revision; // the next expected revision number
+    this.state = synchronized; // start state
   }
-
-  extend(Client.prototype, StateMachine);
-
-  // Creates a new Operation that has the right revision number
-  Client.prototype.createOperation = function () {
-    return new Operation(this.callMethodForState('newRevision'));
-  };
 
   // Call this method when the user changes the document.
   Client.prototype.applyClient = function (operation) {
-    return this.callMethodForState('applyClient', operation);
+    this.state = this.state.applyClient(this, operation);
   };
 
   // Call this method with a new operation from the server
   Client.prototype.applyServer = function (operation) {
-    assert(operation.revision === this.serverRevision);
-    this.callMethodForState('applyServer', operation);
-    this.serverRevision++;
+    this.revision++;
+    this.state = this.state.applyServer(this, operation);
+  };
+
+  Client.prototype.serverAck = function () {
+    this.revision++;
+    this.state = this.state.serverAck(this);
   };
 
   // Override this method.
-  Client.prototype.sendOperation = function (operation) {
+  Client.prototype.sendOperation = function (revision, operation) {
     throw new Error("sendOperation must be defined in child class");
   };
 
@@ -487,140 +522,115 @@ ot.Client = (function (global) {
     throw new Error("applyOperation must be defined in child class");
   };
 
-  Client.prototype.states = {
-    // In the 'synchronized' state, there is no pending operation that the client
-    // has sent to the server.
-    synchronized: {
-      enter: function () {},
-      exit: function () {},
-      // When the user makes an edit, send the operation to the server and
-      // switch to the 'awaitingConfirm' state
-      applyClient: function (operation) {
-        this.sendOperation(operation);
-        this.transitionTo('awaitingConfirm', operation);
-      },
-      // When we receive a new operation from the server, the operation can be
-      // simply applied to the current document
-      applyServer: function (operation) {
-        this.applyOperation(operation);
-      },
-      newRevision: function () {
-        return this.serverRevision;
-      }
-    },
 
-    // In the 'awaitingConfirm' state, there's one operation the client has sent
-    // to the server and is still waiting for an acknoledgement.
-    awaitingConfirm: {
-      enter: function (outstanding) {
-        // Save the pending operation
-        this.outstanding = outstanding;
-      },
-      exit: function () {
-        delete this.outstanding;
-      },
-      // When the user makes an edit, don't send the operation immediately,
-      // instead switch to 'awaitingWithBuffer' state
-      applyClient: function (operation) {
-        assert(operation.revision === this.serverRevision + 1);
-        this.transitionTo('awaitingWithBuffer', this.outstanding, operation);
-      },
-      applyServer: function (operation) {
-        if (operation.id === this.outstanding.id) {
-          // The client's operation has been acknowledged
-          // => switch to synchronized state
-          this.transitionTo('synchronized');
-        } else {
-          // This is another client's operation. Visualization:
-          //
-          //                   /\
-          // this.outstanding /  \ operation
-          //                 /    \
-          //                 \    /
-          //  pair[1]         \  / pair[0] (new this.outstanding)
-          //  (can be applied  \/
-          //  to the client's
-          //  current document)
-          var pair = Operation.transform(this.outstanding, operation);
-          this.outstanding = pair[0];
-          this.applyOperation(pair[1]);
-        }
-      },
-      newRevision: function () {
-        return this.serverRevision + 1;
-      }
-    },
+  // In the 'Synchronized' state, there is no pending operation that the client
+  // has sent to the server.
+  function Synchronized () {}
 
-    // In the 'awaitingWithBuffer' state, the client is waiting for an operation
-    // to be acknoledged by the server while buffering the edits the user makes
-    awaitingWithBuffer: {
-      enter: function (outstanding, buffer) {
-        // Save the pending operation and the user's edits since then
-        this.outstanding = outstanding;
-        this.buffer = buffer;
-      },
-      exit: function () {
-        delete this.outstanding;
-        delete this.buffer;
-      },
-      applyClient: function (operation) {
-        // Compose the user's changes into the buffer
-        assert(operation.revision === this.serverRevision + 2);
-        this.buffer = this.buffer.compose(operation);
-      },
-      applyServer: function (operation) {
-        if (operation.id === this.outstanding.id) {
-          // The pending operation has been acknowledged
-          // => send buffer
-          this.sendOperation(this.buffer);
-          this.transitionTo('awaitingConfirm', this.buffer);
-        } else {
-          // Operation comes from another client
-          //
-          //                       /\
-          //     this.outstanding /  \ operation
-          //                     /    \
-          //                    /\    /
-          //       this.buffer /  \* / pair1[0] (new this.outstanding)
-          //                  /    \/
-          //                  \    /
-          //          pair2[1] \  / pair2[0] (new this.buffer)
-          // the transformed    \/
-          // operation -- can
-          // be applied to the
-          // client's current
-          // document
-          //
-          // * pair1[1]
-          var pair1 = Operation.transform(this.outstanding, operation);
-          this.outstanding = pair1[0];
-          var operationPrime = pair1[1];
-          var pair2 = Operation.transform(this.buffer, operationPrime);
-          this.buffer = pair2[0];
-          this.applyOperation(pair2[1]);
-        }
-      },
-      newRevision: function () {
-        return this.serverRevision + 2;
-      }
-    }
+  Synchronized.prototype.applyClient = function (client, operation) {
+    // When the user makes an edit, send the operation to the server and
+    // switch to the 'AwaitingConfirm' state
+    client.sendOperation(client.revision, operation);
+    return new AwaitingConfirm(operation);
   };
 
-  // Copies all non-inherited key-value pairs of source to target.
-  function extend (target, source) {
-    for (var name in source) {
-      if (source.hasOwnProperty(name)) {
-        target[name] = source[name];
-      }
-    }
+  Synchronized.prototype.applyServer = function (client, operation) {
+    // When we receive a new operation from the server, the operation can be
+    // simply applied to the current document
+    client.applyOperation(operation);
+    return this;
+  };
+
+  Synchronized.prototype.serverAck = function (client) {
+    throw new Error("There is no pending operation.");
+  };
+
+  // Singleton
+  var synchronized = new Synchronized();
+
+
+  // In the 'AwaitingConfirm' state, there's one operation the client has sent
+  // to the server and is still waiting for an acknowledgement.
+  function AwaitingConfirm (outstanding) {
+    // Save the pending operation
+    this.outstanding = outstanding;
   }
 
-  // Throws an error if the first argument is falsy. Useful for debugging.
-  function assert (b, msg) {
-    if (!b) {
-      throw new Error(msg || "assertion error");
-    }
+  AwaitingConfirm.prototype.applyClient = function (client, operation) {
+    // When the user makes an edit, don't send the operation immediately,
+    // instead switch to 'AwaitingWithBuffer' state
+    return new AwaitingWithBuffer(this.outstanding, operation);
+  };
+
+  AwaitingConfirm.prototype.applyServer = function (client, operation) {
+    // This is another client's operation. Visualization:
+    //
+    //                   /\
+    // this.outstanding /  \ operation
+    //                 /    \
+    //                 \    /
+    //  pair[1]         \  / pair[0] (new outstanding)
+    //  (can be applied  \/
+    //  to the client's
+    //  current document)
+    var pair = operation.constructor.transform(this.outstanding, operation);
+    client.applyOperation(pair[1]);
+    return new AwaitingConfirm(pair[0]);
+  };
+
+  AwaitingConfirm.prototype.serverAck = function (client) {
+    // The client's operation has been acknowledged
+    // => switch to synchronized state
+    return synchronized;
+  };
+
+
+  // In the 'AwaitingWithBuffer' state, the client is waiting for an operation
+  // to be acknowledged by the server while buffering the edits the user makes
+  function AwaitingWithBuffer (outstanding, buffer) {
+    // Save the pending operation and the user's edits since then
+    this.outstanding = outstanding;
+    this.buffer = buffer;
   }
+
+  AwaitingWithBuffer.prototype.applyClient = function (client, operation) {
+    // Compose the user's changes onto the buffer
+    var newBuffer = this.buffer.compose(operation);
+    return new AwaitingWithBuffer(this.outstanding, newBuffer);
+  };
+
+  AwaitingWithBuffer.prototype.applyServer = function (client, operation) {
+    // Operation comes from another client
+    //
+    //                       /\
+    //     this.outstanding /  \ operation
+    //                     /    \
+    //                    /\    /
+    //       this.buffer /  \* / pair1[0] (new outstanding)
+    //                  /    \/
+    //                  \    /
+    //          pair2[1] \  / pair2[0] (new buffer)
+    // the transformed    \/
+    // operation -- can
+    // be applied to the
+    // client's current
+    // document
+    //
+    // * pair1[1]
+    var transform = operation.constructor.transform;
+    var pair1 = transform(this.outstanding, operation);
+    var pair2 = transform(this.buffer, pair1[1]);
+    client.applyOperation(pair2[1]);
+    return new AwaitingWithBuffer(pair1[0], pair2[0]);
+  };
+
+  AwaitingWithBuffer.prototype.serverAck = function (client) {
+    // The pending operation has been acknowledged
+    // => send buffer
+    client.sendOperation(client.revision, this.buffer);
+    return new AwaitingConfirm(this.buffer);
+  };
+
 
   return Client;
 
@@ -632,8 +642,8 @@ if (typeof module === 'object') {
   // Monkey patching, yay!
 
   // The oldValue is needed to find
-  ot.Operation.prototype.fromCodeMirrorChange = function (change, oldValue) {
-    var operation = this;
+  ot.TextOperation.fromCodeMirrorChange = function (change, oldValue) {
+    var operation = new ot.TextOperation();
     // Holds the current value
     var lines = oldValue.split('\n');
 
@@ -714,7 +724,7 @@ if (typeof module === 'object') {
       //assert(operation.targetLength === getLength());
       change = change.next;
       if (!change) { break; }
-      var nextOperation = new ot.Operation(operation.revision + 1);
+      var nextOperation = new ot.TextOperation(operation.revision + 1);
       generateOperation(nextOperation, change);
       //oldValue = nextOperation.apply(oldValue);
       //assert(oldValue === lines.join('\n'));
@@ -725,7 +735,7 @@ if (typeof module === 'object') {
   };
 
   // Apply an operation to a CodeMirror instance.
-  ot.Operation.prototype.applyToCodeMirror = function (cm) {
+  ot.TextOperation.prototype.applyToCodeMirror = function (cm) {
     var operation = this;
     cm.operation(function () {
       var ops = operation.ops;
@@ -757,7 +767,8 @@ if (typeof module === 'object') {
 
 })();ot.CodeMirrorClient = (function () {
   var Client = ot.Client;
-  var Operation = ot.Operation;
+  var TextOperation = ot.TextOperation;
+  var WrappedOperation = ot.WrappedOperation;
 
   function CodeMirrorClient (socket, cm) {
     this.socket = socket;
@@ -802,9 +813,10 @@ if (typeof module === 'object') {
         var client = self.getClientObject(obj.clientId);
         client.setName(obj.name);
       })
-      .on('operation', function (operationObj) {
-        var operation = Operation.fromJSON(operationObj);
-        console.log("Operation from server by client " + operation.meta.clientId + ":", operation);
+      .on('ack', function () { self.serverAck(); })
+      .on('operation', function (obj) {
+        var operation = new WrappedOperation(TextOperation.fromJSON(obj.operation), obj.meta);
+        console.log("Operation from server by client " + obj.meta.clientId + ":", operation);
         self.applyServer(operation);
       })
       .on('cursor', function (obj) {
@@ -992,20 +1004,18 @@ if (typeof module === 'object') {
     cleanNoops(sourceStack);
     if (sourceStack.length === 0) { return; }
     var operation = sourceStack.pop();
-    operation.revision = this.createOperation().revision;
     targetStack.push(operation.invert(this.oldValue));
     this.unredo = true;
     operation.applyToCodeMirror(this.cm);
     this.cursor = this.selectionEnd = cursorIndexAfterOperation(operation);
     this.cm.setCursor(this.cm.posFromIndex(this.cursor));
-    this.applyClient(operation);
+    this.applyClient(new WrappedOperation(operation));
   };
 
   CodeMirrorClient.prototype.transformUnredoStack = function (stack, operation) {
     cleanNoops(stack);
     for (var i = stack.length - 1; i >= 0; i--) {
-      stack[i].revision = operation.revision;
-      var transformedPair = Operation.transform(stack[i], operation);
+      var transformedPair = TextOperation.transform(stack[i], operation);
       stack[i]  = transformedPair[0];
       operation = transformedPair[1];
     }
@@ -1050,7 +1060,6 @@ if (typeof module === 'object') {
       this.undoStack.push(operation);
     } else {
       var lastOperation = this.undoStack[this.undoStack.length - 1];
-      lastOperation.revision = operation.revision + 1;
       if (shouldBeComposed(operation, lastOperation)) {
         var composed = operation.compose(lastOperation);
         this.undoStack[this.undoStack.length - 1] = composed;
@@ -1076,10 +1085,9 @@ if (typeof module === 'object') {
     var cm = this.cm;
     try {
       if (!this.fromServer && !this.unredo) {
-        var operation = this.createOperation()
-          .fromCodeMirrorChange(change, this.oldValue);
+        var operation = TextOperation.fromCodeMirrorChange(change, this.oldValue);
         this.addOperationToUndo(operation.invert(this.oldValue));
-        this.applyClient(operation);
+        this.applyClient(new WrappedOperation(operation, {}));
       }
     } finally {
       this.fromServer = false;
@@ -1123,20 +1131,24 @@ if (typeof module === 'object') {
     }
   };
 
-  CodeMirrorClient.prototype.sendOperation = function (operation) {
-    this.socket.emit('operation', operation);
+  CodeMirrorClient.prototype.sendOperation = function (revision, operation) {
+    this.socket.emit('operation', {
+      revision: revision,
+      meta: operation.meta,
+      operation: operation.wrapped.toJSON()
+    });
   };
 
   CodeMirrorClient.prototype.applyOperation = function (operation) {
     this.fromServer = true;
-    operation.applyToCodeMirror(this.cm);
+    operation.wrapped.applyToCodeMirror(this.cm);
 
     var meta = operation.meta;
     var client = this.getClientObject(meta.clientId);
     client.updateCursor(meta.cursor, meta.selectionEnd);
 
-    this.transformUnredoStack(this.undoStack, operation);
-    this.transformUnredoStack(this.redoStack, operation);
+    this.transformUnredoStack(this.undoStack, operation.wrapped);
+    this.transformUnredoStack(this.redoStack, operation.wrapped);
   };
 
   function randomInt (n) {

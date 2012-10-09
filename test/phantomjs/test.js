@@ -47,7 +47,7 @@
     var oldValue = str;
     var cm1 = CodeMirror(document.body, { value: str });
     cm1.on('change', function (_, change) {
-      var operation = new ot.Operation(0).fromCodeMirrorChange(change, oldValue);
+      var operation = ot.TextOperation.fromCodeMirrorChange(change, oldValue);
       //console.log(change, operation);
       operation.applyToCodeMirror(cm2);
       oldValue = cm1.getValue();
