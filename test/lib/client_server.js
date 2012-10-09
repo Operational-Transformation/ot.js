@@ -10,14 +10,6 @@ function inherit (Const, Super) {
 }
 
 
-function MyServer (document, broadcast) {
-  Server.call(this, document);
-  this.broadcast = broadcast;
-}
-
-inherit(MyServer, Server);
-
-
 function MyClient (userId, document, revision, channel) {
   Client.call(this, revision);
   this.userId = userId;
@@ -71,15 +63,14 @@ NetworkChannel.prototype.receive = function () {
 function testClientServerInteraction () {
   var document = h.randomString();
   var userId;
-  var server = new MyServer(document, function (operation) {
-    var obj = { userId: userId, operation: operation };
-    client1ReceiveChannel.write(obj);
-    client2ReceiveChannel.write(obj);
-  });
+  var server = new Server(document);
 
-  function serverReceive (obj) {
-    userId = obj.userId;
-    server.receiveOperation(obj.revision, obj.operation);
+  function serverReceive (msg) {
+    userId = msg.userId;
+    var operationP = server.receiveOperation(msg.revision, msg.operation);
+    var broadcast = { userId: userId, operation: operationP };
+    client1ReceiveChannel.write(broadcast);
+    client2ReceiveChannel.write(broadcast);
   }
 
   function clientReceive (client) {
