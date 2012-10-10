@@ -18,10 +18,11 @@
   "devDependencies": {
     "express": "2.5.11",
     "socket.io": "0.9.8",
-    "uglify-js": "*"
+    "uglify-js": "*",
+    "nodeunit": "*"
   },
   "scripts": {
-    "test": "node ./test/run_tests.js"
+    "test": "nodeunit test/lib && node ./test/run_tests.js"
   },
   "licenses": [
     {

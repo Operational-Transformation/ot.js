@@ -2,12 +2,6 @@
 
 var child_process = require('child_process');
 
-var text_operation_tests = require('./lib/text-operation');
-var wrapped_operation_tests = require('./lib/wrapped-operation');
-var client_tests = require('./lib/client');
-var server_tests = require('./lib/server');
-var client_server_tests = require('./lib/client_server');
-
 function isPhantomJSInstalled (cb) {
   child_process.exec('which phantomjs', function (err) {
     cb(!err);
@@ -43,11 +37,6 @@ function runPhantomJSTests () {
 }
 
 function main () {
-  text_operation_tests.run();
-  wrapped_operation_tests.run();
-  client_tests.run();
-  server_tests.run();
-  client_server_tests.run();
   runPhantomJSTests();
 }
 

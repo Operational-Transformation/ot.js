@@ -1,32 +1,35 @@
 var TextOperation = require('../../lib/text-operation');
-var assert = require('assert');
-var h = require('./helpers');
+var h = require('../helpers');
 
-function testConstructor () {
+var n = 500;
+
+exports.testConstructor = function (test) {
   // you should be able to call the constructor without 'new'
   var o = TextOperation();
-  assert.strictEqual(o.constructor, TextOperation);
-}
+  test.strictEqual(o.constructor, TextOperation);
+  test.done();
+};
 
-function testLengths () {
+exports.testLengths = function (test) {
   var o = new TextOperation();
-  assert.strictEqual(0, o.baseLength);
-  assert.strictEqual(0, o.targetLength);
+  test.strictEqual(0, o.baseLength);
+  test.strictEqual(0, o.targetLength);
   o.retain(5);
-  assert.strictEqual(5, o.baseLength);
-  assert.strictEqual(5, o.targetLength);
+  test.strictEqual(5, o.baseLength);
+  test.strictEqual(5, o.targetLength);
   o.insert("abc");
-  assert.strictEqual(5, o.baseLength);
-  assert.strictEqual(8, o.targetLength);
+  test.strictEqual(5, o.baseLength);
+  test.strictEqual(8, o.targetLength);
   o.retain(2);
-  assert.strictEqual(7, o.baseLength);
-  assert.strictEqual(10, o.targetLength);
+  test.strictEqual(7, o.baseLength);
+  test.strictEqual(10, o.targetLength);
   o.delete(2);
-  assert.strictEqual(9, o.baseLength);
-  assert.strictEqual(10, o.targetLength);
-}
+  test.strictEqual(9, o.baseLength);
+  test.strictEqual(10, o.targetLength);
+  test.done();
+};
 
-function testChaining () {
+exports.testChaining = function (test) {
   var o = new TextOperation()
     .retain(5)
     .retain(0)
@@ -36,82 +39,87 @@ function testChaining () {
     .delete(3)
     .delete(0)
     .delete("");
-  assert.strictEqual(3, o.ops.length);
-}
+  test.strictEqual(3, o.ops.length);
+  test.done();
+};
 
-function testApply () {
+exports.testApply = h.randomTest(n, function (test) {
   var str = h.randomString(50);
   var o = h.randomOperation(str);
-  assert.strictEqual(str.length, o.baseLength);
-  assert.strictEqual(o.apply(str).length, o.targetLength);
-}
+  test.strictEqual(str.length, o.baseLength);
+  test.strictEqual(o.apply(str).length, o.targetLength);
+});
 
-function testInvert () {
+exports.testInvert = h.randomTest(n, function (test) {
   var str = h.randomString(50);
   var o = h.randomOperation(str);
   var p = o.invert(str);
-  assert.strictEqual(o.baseLength, p.targetLength);
-  assert.strictEqual(o.targetLength, p.baseLength);
-  assert.strictEqual(p.apply(o.apply(str)), str);
-}
+  test.strictEqual(o.baseLength, p.targetLength);
+  test.strictEqual(o.targetLength, p.baseLength);
+  test.strictEqual(p.apply(o.apply(str)), str);
+});
 
-function testEmptyOps () {
+exports.testEmptyOps = function (test) {
   var o = new TextOperation();
   o.retain(0);
   o.insert('');
   o.delete('');
-  assert.strictEqual(0, o.ops.length);
-}
+  test.strictEqual(0, o.ops.length);
+  test.done();
+};
 
-function testEquals () {
+exports.testEquals = function (test) {
   var op1 = new TextOperation().delete(1).insert("lo").retain(2).retain(3);
   var op2 = new TextOperation().delete(-1).insert("l").insert("o").retain(5);
-  assert.ok(op1.equals(op2));
+  test.ok(op1.equals(op2));
   op1.delete(1);
   op2.retain(1);
-  assert.ok(!op1.equals(op2));
-}
+  test.ok(!op1.equals(op2));
+  test.done();
+};
 
-function testOpsMerging () {
+exports.testOpsMerging = function (test) {
   function last (arr) { return arr[arr.length-1]; }
   var o = new TextOperation();
-  assert.strictEqual(0, o.ops.length);
+  test.strictEqual(0, o.ops.length);
   o.retain(2);
-  assert.strictEqual(1, o.ops.length);
-  assert.strictEqual(2, last(o.ops).retain)
+  test.strictEqual(1, o.ops.length);
+  test.strictEqual(2, last(o.ops).retain);
   o.retain(3);
-  assert.strictEqual(1, o.ops.length);
-  assert.strictEqual(5, last(o.ops).retain)
+  test.strictEqual(1, o.ops.length);
+  test.strictEqual(5, last(o.ops).retain);
   o.insert("abc");
-  assert.strictEqual(2, o.ops.length);
-  assert.strictEqual("abc", last(o.ops).insert)
+  test.strictEqual(2, o.ops.length);
+  test.strictEqual("abc", last(o.ops).insert);
   o.insert("xyz");
-  assert.strictEqual(2, o.ops.length);
-  assert.strictEqual("abcxyz", last(o.ops).insert)
+  test.strictEqual(2, o.ops.length);
+  test.strictEqual("abcxyz", last(o.ops).insert);
   o.delete("d");
-  assert.strictEqual(3, o.ops.length);
-  assert.strictEqual(1, last(o.ops).delete)
+  test.strictEqual(3, o.ops.length);
+  test.strictEqual(1, last(o.ops).delete);
   o.delete("d");
-  assert.strictEqual(3, o.ops.length);
-  assert.strictEqual(2, last(o.ops).delete)
-}
+  test.strictEqual(3, o.ops.length);
+  test.strictEqual(2, last(o.ops).delete);
+  test.done();
+};
 
-function testToString () {
+exports.testToString = function (test) {
   var o = new TextOperation();
   o.retain(2);
   o.insert('lorem');
   o.delete('ipsum');
   o.retain(5);
-  assert.strictEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
-}
+  test.strictEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
+  test.done();
+};
 
-function testIdJSON () {
+exports.testIdJSON = h.randomTest(n, function (test) {
   var doc = h.randomString(50);
   var operation = h.randomOperation(doc);
-  assert.ok(operation.equals(TextOperation.fromJSON(operation.toJSON())));
-}
+  test.ok(operation.equals(TextOperation.fromJSON(operation.toJSON())));
+});
 
-function testFromJSON () {
+exports.testFromJSON = function (test) {
   var obj = {
     baseLength: 4,
     targetLength: 5,
@@ -123,9 +131,9 @@ function testFromJSON () {
     ]
   };
   var o = TextOperation.fromJSON(obj);
-  assert.strictEqual(3, o.ops.length);
-  assert.strictEqual(4, o.baseLength);
-  assert.strictEqual(5, o.targetLength);
+  test.strictEqual(3, o.ops.length);
+  test.strictEqual(4, o.baseLength);
+  test.strictEqual(5, o.targetLength);
 
   function clone (obj) {
     var copy = {};
@@ -140,36 +148,33 @@ function testFromJSON () {
   function assertIncorrectAfter (fn) {
     var obj2 = clone(obj);
     fn(obj2);
-    assert.throws(function () { TextOperation.fromJSON(obj2); });
+    test.throws(function () { TextOperation.fromJSON(obj2); });
   }
 
   assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
   assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ lorem: 'no such operation' }); });
-}
+  test.done();
+};
 
-function testCompose () {
+exports.testCompose = h.randomTest(n, function (test) {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = h.randomString(20);
   var a = h.randomOperation(str);
   var afterA = a.apply(str);
-  assert.strictEqual(a.targetLength, afterA.length);
+  test.strictEqual(a.targetLength, afterA.length);
   var b = h.randomOperation(afterA);
   var afterB = b.apply(afterA);
-  assert.strictEqual(b.targetLength, afterB.length);
+  test.strictEqual(b.targetLength, afterB.length);
   var ab = a.compose(b);
-  assert.strictEqual(ab.meta, a.meta);
-  assert.strictEqual(ab.targetLength, b.targetLength);
+  test.strictEqual(ab.meta, a.meta);
+  test.strictEqual(ab.targetLength, b.targetLength);
   var afterAB = ab.apply(str);
-  if (afterB !== afterAB) {
-    throw new Error(
-      "compose error; str: " + str + ", a: " + a + ", b: " + b
-    );
-  }
-}
+  test.strictEqual(afterB, afterAB);
+});
 
-function testTransform () {
+exports.testTransform = h.randomTest(n, function (test) {
   // invariant: apply(str, compose(a, b')) = apply(compose(b, a'))
   // where (a', b') = transform(a, b)
   var str = h.randomString(20);
@@ -182,26 +187,5 @@ function testTransform () {
   var baPrime = b.compose(aPrime);
   var afterAbPrime = abPrime.apply(str);
   var afterBaPrime = baPrime.apply(str);
-  if (afterAbPrime !== afterBaPrime) {
-    throw new Error(
-      "transform error; str: " + str + ", a: " + a + ", b: " + b
-    );
-  }
-}
-
-exports.run = function () {
-  var n = 500;
-  testConstructor();
-  testLengths();
-  testChaining();
-  testEmptyOps();
-  testEquals();
-  testOpsMerging();
-  testToString();
-  testIdJSON();
-  testFromJSON();
-  h.times(n, testApply);
-  h.times(n, testInvert);
-  h.times(n, testCompose);
-  h.times(n, testTransform);
-};
+  test.strictEqual(afterAbPrime, afterBaPrime);
+});

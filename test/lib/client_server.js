@@ -1,7 +1,6 @@
 var Client = require('../../lib/client');
 var Server = require('../../lib/server');
-var assert = require('assert');
-var h = require('./helpers');
+var h = require('../helpers');
 
 function inherit (Const, Super) {
   function F () {}
@@ -61,7 +60,7 @@ NetworkChannel.prototype.receive = function () {
 };
 
 
-function testClientServerInteraction () {
+exports.testClientServerInteraction = h.randomTest(50, function (test) {
   var document = h.randomString();
   var userId;
   var server = new Server(document);
@@ -122,13 +121,6 @@ function testClientServerInteraction () {
     receiveRandom();
   }
 
-  assert.strictEqual(server.document, client1.document);
-  assert.strictEqual(client1.document, client2.document);
-}
-
-exports.run = function () {
-  var n = 25;
-  for (var i = 0; i < n; i++) {
-    testClientServerInteraction();
-  }
-};
+  test.strictEqual(server.document, client1.document);
+  test.strictEqual(client1.document, client2.document);
+});

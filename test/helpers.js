@@ -1,4 +1,4 @@
-var TextOperation = require('../../lib/text-operation');
+var TextOperation = require('../lib/text-operation');
 
 function randomInt (n) {
   return Math.floor(Math.random() * n);
@@ -37,14 +37,19 @@ function randomElement (arr) {
   return arr[randomInt(arr.length)];
 }
 
-function times (n, fun) {
-  while (n--) {
-    fun();
-  }
+// A random test generates random data to check some invariants. To increase
+// confidence in a random test, it is run repeatedly.
+function randomTest (n, fun) {
+  return function (test) {
+    while (n--) {
+      fun(test);
+    }
+    test.done();
+  };
 }
 
 exports.randomInt = randomInt;
 exports.randomString = randomString;
 exports.randomOperation = randomOperation;
 exports.randomElement = randomElement;
-exports.times = times;
+exports.randomTest = randomTest;
