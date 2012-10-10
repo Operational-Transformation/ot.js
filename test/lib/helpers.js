@@ -37,28 +37,6 @@ function randomElement (arr) {
   return arr[randomInt(arr.length)];
 }
 
-function assert (b, msg) {
-  if (!b) {
-    throw new Error(msg || "assertion error");
-  }
-}
-
-function assertEqual (a, b) {
-  if (a !== b) {
-    throw new Error("assertion error: " + a + " !== " + b);
-  }
-}
-
-function assertThrows (fn) {
-  var threw = false;
-  try {
-    fn();
-  } catch (exc) {
-    threw = true;
-  }
-  assert(threw, "Expected function to throw an error");
-}
-
 function times (n, fun) {
   while (n--) {
     fun();
@@ -69,7 +47,4 @@ exports.randomInt = randomInt;
 exports.randomString = randomString;
 exports.randomOperation = randomOperation;
 exports.randomElement = randomElement;
-exports.assert = assert;
-exports.assertEqual = assertEqual;
-exports.assertThrows = assertThrows;
 exports.times = times;

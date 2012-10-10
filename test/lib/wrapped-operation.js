@@ -1,12 +1,13 @@
 var WrappedOperation = require('../../lib/wrapped-operation');
+var assert = require('assert');
 var h = require('./helpers');
 
 function testApply () {
   var str = h.randomString(50);
   var operation = h.randomOperation(str);
   var wrapped = new WrappedOperation(operation, { lorem: 42 });
-  h.assertEqual(wrapped.meta.lorem, 42);
-  h.assertEqual(wrapped.apply(str), operation.apply(str));
+  assert.strictEqual(wrapped.meta.lorem, 42);
+  assert.strictEqual(wrapped.apply(str), operation.apply(str));
 }
 
 function testInvert () {
@@ -15,8 +16,8 @@ function testInvert () {
   var payload = { lorem: 'ipsum' };
   var wrapped = new WrappedOperation(operation, payload);
   var wrappedInverted = wrapped.invert(str);
-  h.assertEqual(wrappedInverted.meta, payload);
-  h.assertEqual(str, wrappedInverted.apply(operation.apply(str)));
+  assert.strictEqual(wrappedInverted.meta, payload);
+  assert.strictEqual(str, wrappedInverted.apply(operation.apply(str)));
 }
 
 function testCompose () {
@@ -25,10 +26,10 @@ function testCompose () {
   var strN = a.apply(str);
   var b = new WrappedOperation(h.randomOperation(strN), { a: 3, c: 4 });
   var ab = a.compose(b);
-  h.assertEqual(ab.meta.a, 3);
-  h.assertEqual(ab.meta.b, 2);
-  h.assertEqual(ab.meta.c, 4);
-  h.assertEqual(ab.apply(str), b.apply(strN));
+  assert.strictEqual(ab.meta.a, 3);
+  assert.strictEqual(ab.meta.b, 2);
+  assert.strictEqual(ab.meta.c, 4);
+  assert.strictEqual(ab.apply(str), b.apply(strN));
 }
 
 function testTransform () {
@@ -40,9 +41,9 @@ function testTransform () {
   var pair = WrappedOperation.transform(a, b);
   var aPrime = pair[0];
   var bPrime = pair[1];
-  h.assertEqual(aPrime.meta, metaA);
-  h.assertEqual(bPrime.meta, metaB);
-  h.assertEqual(aPrime.apply(b.apply(str)), bPrime.apply(a.apply(str)));
+  assert.strictEqual(aPrime.meta, metaA);
+  assert.strictEqual(bPrime.meta, metaB);
+  assert.strictEqual(aPrime.apply(b.apply(str)), bPrime.apply(a.apply(str)));
 }
 
 exports.run = function () {

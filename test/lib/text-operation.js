@@ -1,28 +1,29 @@
 var TextOperation = require('../../lib/text-operation');
+var assert = require('assert');
 var h = require('./helpers');
 
 function testConstructor () {
   // you should be able to call the constructor without 'new'
   var o = TextOperation();
-  h.assertEqual(o.constructor, TextOperation);
+  assert.strictEqual(o.constructor, TextOperation);
 }
 
 function testLengths () {
   var o = new TextOperation();
-  h.assertEqual(0, o.baseLength);
-  h.assertEqual(0, o.targetLength);
+  assert.strictEqual(0, o.baseLength);
+  assert.strictEqual(0, o.targetLength);
   o.retain(5);
-  h.assertEqual(5, o.baseLength);
-  h.assertEqual(5, o.targetLength);
+  assert.strictEqual(5, o.baseLength);
+  assert.strictEqual(5, o.targetLength);
   o.insert("abc");
-  h.assertEqual(5, o.baseLength);
-  h.assertEqual(8, o.targetLength);
+  assert.strictEqual(5, o.baseLength);
+  assert.strictEqual(8, o.targetLength);
   o.retain(2);
-  h.assertEqual(7, o.baseLength);
-  h.assertEqual(10, o.targetLength);
+  assert.strictEqual(7, o.baseLength);
+  assert.strictEqual(10, o.targetLength);
   o.delete(2);
-  h.assertEqual(9, o.baseLength);
-  h.assertEqual(10, o.targetLength);
+  assert.strictEqual(9, o.baseLength);
+  assert.strictEqual(10, o.targetLength);
 }
 
 function testChaining () {
@@ -35,23 +36,23 @@ function testChaining () {
     .delete(3)
     .delete(0)
     .delete("");
-  h.assertEqual(3, o.ops.length);
+  assert.strictEqual(3, o.ops.length);
 }
 
 function testApply () {
   var str = h.randomString(50);
   var o = h.randomOperation(str);
-  h.assertEqual(str.length, o.baseLength);
-  h.assertEqual(o.apply(str).length, o.targetLength);
+  assert.strictEqual(str.length, o.baseLength);
+  assert.strictEqual(o.apply(str).length, o.targetLength);
 }
 
 function testInvert () {
   var str = h.randomString(50);
   var o = h.randomOperation(str);
   var p = o.invert(str);
-  h.assertEqual(o.baseLength, p.targetLength);
-  h.assertEqual(o.targetLength, p.baseLength);
-  h.assertEqual(p.apply(o.apply(str)), str);
+  assert.strictEqual(o.baseLength, p.targetLength);
+  assert.strictEqual(o.targetLength, p.baseLength);
+  assert.strictEqual(p.apply(o.apply(str)), str);
 }
 
 function testEmptyOps () {
@@ -59,40 +60,40 @@ function testEmptyOps () {
   o.retain(0);
   o.insert('');
   o.delete('');
-  h.assertEqual(0, o.ops.length);
+  assert.strictEqual(0, o.ops.length);
 }
 
 function testEquals () {
   var op1 = new TextOperation().delete(1).insert("lo").retain(2).retain(3);
   var op2 = new TextOperation().delete(-1).insert("l").insert("o").retain(5);
-  h.assert(op1.equals(op2));
+  assert.ok(op1.equals(op2));
   op1.delete(1);
   op2.retain(1);
-  h.assert(!op1.equals(op2));
+  assert.ok(!op1.equals(op2));
 }
 
 function testOpsMerging () {
   function last (arr) { return arr[arr.length-1]; }
   var o = new TextOperation();
-  h.assertEqual(0, o.ops.length);
+  assert.strictEqual(0, o.ops.length);
   o.retain(2);
-  h.assertEqual(1, o.ops.length);
-  h.assertEqual(2, last(o.ops).retain)
+  assert.strictEqual(1, o.ops.length);
+  assert.strictEqual(2, last(o.ops).retain)
   o.retain(3);
-  h.assertEqual(1, o.ops.length);
-  h.assertEqual(5, last(o.ops).retain)
+  assert.strictEqual(1, o.ops.length);
+  assert.strictEqual(5, last(o.ops).retain)
   o.insert("abc");
-  h.assertEqual(2, o.ops.length);
-  h.assertEqual("abc", last(o.ops).insert)
+  assert.strictEqual(2, o.ops.length);
+  assert.strictEqual("abc", last(o.ops).insert)
   o.insert("xyz");
-  h.assertEqual(2, o.ops.length);
-  h.assertEqual("abcxyz", last(o.ops).insert)
+  assert.strictEqual(2, o.ops.length);
+  assert.strictEqual("abcxyz", last(o.ops).insert)
   o.delete("d");
-  h.assertEqual(3, o.ops.length);
-  h.assertEqual(1, last(o.ops).delete)
+  assert.strictEqual(3, o.ops.length);
+  assert.strictEqual(1, last(o.ops).delete)
   o.delete("d");
-  h.assertEqual(3, o.ops.length);
-  h.assertEqual(2, last(o.ops).delete)
+  assert.strictEqual(3, o.ops.length);
+  assert.strictEqual(2, last(o.ops).delete)
 }
 
 function testToString () {
@@ -101,13 +102,13 @@ function testToString () {
   o.insert('lorem');
   o.delete('ipsum');
   o.retain(5);
-  h.assertEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
+  assert.strictEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
 }
 
 function testIdJSON () {
   var doc = h.randomString(50);
   var operation = h.randomOperation(doc);
-  h.assert(operation.equals(TextOperation.fromJSON(operation.toJSON())));
+  assert.ok(operation.equals(TextOperation.fromJSON(operation.toJSON())));
 }
 
 function testFromJSON () {
@@ -122,9 +123,9 @@ function testFromJSON () {
     ]
   };
   var o = TextOperation.fromJSON(obj);
-  h.assertEqual(3, o.ops.length);
-  h.assertEqual(4, o.baseLength);
-  h.assertEqual(5, o.targetLength);
+  assert.strictEqual(3, o.ops.length);
+  assert.strictEqual(4, o.baseLength);
+  assert.strictEqual(5, o.targetLength);
 
   function clone (obj) {
     var copy = {};
@@ -139,7 +140,7 @@ function testFromJSON () {
   function assertIncorrectAfter (fn) {
     var obj2 = clone(obj);
     fn(obj2);
-    h.assertThrows(function () { TextOperation.fromJSON(obj2); });
+    assert.throws(function () { TextOperation.fromJSON(obj2); });
   }
 
   assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
@@ -153,13 +154,13 @@ function testCompose () {
   var str = h.randomString(20);
   var a = h.randomOperation(str);
   var afterA = a.apply(str);
-  h.assertEqual(a.targetLength, afterA.length);
+  assert.strictEqual(a.targetLength, afterA.length);
   var b = h.randomOperation(afterA);
   var afterB = b.apply(afterA);
-  h.assertEqual(b.targetLength, afterB.length);
+  assert.strictEqual(b.targetLength, afterB.length);
   var ab = a.compose(b);
-  h.assertEqual(ab.meta, a.meta);
-  h.assertEqual(ab.targetLength, b.targetLength);
+  assert.strictEqual(ab.meta, a.meta);
+  assert.strictEqual(ab.targetLength, b.targetLength);
   var afterAB = ab.apply(str);
   if (afterB !== afterAB) {
     throw new Error(

@@ -1,5 +1,6 @@
 var Client = require('../../lib/client');
 var Server = require('../../lib/server');
+var assert = require('assert');
 var h = require('./helpers');
 
 function inherit (Const, Super) {
@@ -121,8 +122,8 @@ function testClientServerInteraction () {
     receiveRandom();
   }
 
-  h.assertEqual(server.document, client1.document);
-  h.assertEqual(client1.document, client2.document);
+  assert.strictEqual(server.document, client1.document);
+  assert.strictEqual(client1.document, client2.document);
 }
 
 exports.run = function () {
