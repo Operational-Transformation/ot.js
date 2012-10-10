@@ -1,3 +1,12 @@
+/*
+ *    /\
+ *   /  \ operational-transformation 0.0.7
+ *  /    \ http://ot.substance.io
+ *  \    /
+ *   \  / (c) 2012 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
+ *    \/ operational-transformation may be freely distributed under the MIT license.
+ */
+
 if (typeof ot === 'undefined') {
   // Export for browsers
   var ot = {};
@@ -428,7 +437,8 @@ ot.TextOperation = (function () {
 // Export for CommonJS
 if (typeof module === 'object') {
   module.exports = ot.TextOperation;
-}if (typeof ot === 'undefined') {
+}
+if (typeof ot === 'undefined') {
   // Export for browsers
   var ot = {};
 }
@@ -482,7 +492,8 @@ ot.WrappedOperation = (function (global) {
 // Export for CommonJS
 if (typeof module === 'object') {
   module.exports = ot.WrappedOperation;
-}// translation of https://github.com/djspiewak/cccp/blob/master/agent/src/main/scala/com/codecommit/cccp/agent/state.scala
+}
+// translation of https://github.com/djspiewak/cccp/blob/master/agent/src/main/scala/com/codecommit/cccp/agent/state.scala
 
 if (typeof ot === 'undefined') {
   var ot = {};
@@ -645,7 +656,8 @@ ot.Client = (function (global) {
 
 if (typeof module === 'object') {
   module.exports = ot.Client;
-}(function () {
+}
+(function () {
   // Monkey patching, yay!
 
   // The oldValue is needed to find
@@ -772,7 +784,8 @@ if (typeof module === 'object') {
     }
   }
 
-})();ot.CodeMirrorClient = (function () {
+})();
+ot.CodeMirrorClient = (function () {
   var Client = ot.Client;
   var TextOperation = ot.TextOperation;
   var WrappedOperation = ot.WrappedOperation;

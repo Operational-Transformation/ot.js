@@ -1,4 +1,4 @@
-(function () {
+test("converting between CodeMirror changes and operations", function () {
   function randomInt (n) {
     return Math.floor(Math.random() * n);
   }
@@ -60,11 +60,9 @@
       randomOperation(cm1);
       var v1 = cm1.getValue();
       var v2 = cm2.getValue();
-      if (v1 !== v2) {
-        throw new Error('"' + v1 + '"\n\n!==\n\n"' + v2 + '"');
-      }
+      ok(v1 === v2, "the contents of both CodeMirror instances should be equal");
     }
   }
 
   test();
-})();
+});
