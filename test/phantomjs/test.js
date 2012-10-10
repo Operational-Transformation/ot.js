@@ -1,4 +1,4 @@
-test("converting between CodeMirror changes and operations", function () {
+asyncTest("converting between CodeMirror changes and operations", function () {
   function randomInt (n) {
     return Math.floor(Math.random() * n);
   }
@@ -56,12 +56,23 @@ test("converting between CodeMirror changes and operations", function () {
     var cm2 = CodeMirror(document.body, { value: str });
 
     var n = 100;
-    while (n--) {
-      randomOperation(cm1);
-      var v1 = cm1.getValue();
-      var v2 = cm2.getValue();
-      ok(v1 === v2, "the contents of both CodeMirror instances should be equal");
+    expect(n);
+
+    function step () {
+      while (n--) {
+        randomOperation(cm1);
+        var v1 = cm1.getValue();
+        var v2 = cm2.getValue();
+        ok(v1 === v2, "the contents of both CodeMirror instances should be equal");
+
+        if (n % 10 === 0) {
+          setTimeout(step, 10); // give the browser a chance to repaint
+          break;
+        }
+      }
+      if (n === 0) { start(); }
     }
+    step();
   }
 
   test();
