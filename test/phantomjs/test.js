@@ -1,3 +1,5 @@
+/*global test, asyncTest, ok, start, ot, expect, CodeMirror */
+
 asyncTest("converting between CodeMirror changes and operations", function () {
   function randomInt (n) {
     return Math.floor(Math.random() * n);

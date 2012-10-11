@@ -23,7 +23,7 @@ exports.testLengths = function (test) {
   o.retain(2);
   test.strictEqual(7, o.baseLength);
   test.strictEqual(10, o.targetLength);
-  o.delete(2);
+  o['delete'](2);
   test.strictEqual(9, o.baseLength);
   test.strictEqual(10, o.targetLength);
   test.done();
@@ -35,10 +35,10 @@ exports.testChaining = function (test) {
     .retain(0)
     .insert("lorem")
     .insert("")
-    .delete("abc")
-    .delete(3)
-    .delete(0)
-    .delete("");
+    ['delete']("abc")
+    ['delete'](3)
+    ['delete'](0)
+    ['delete']("");
   test.strictEqual(3, o.ops.length);
   test.done();
 };
@@ -63,16 +63,16 @@ exports.testEmptyOps = function (test) {
   var o = new TextOperation();
   o.retain(0);
   o.insert('');
-  o.delete('');
+  o['delete']('');
   test.strictEqual(0, o.ops.length);
   test.done();
 };
 
 exports.testEquals = function (test) {
-  var op1 = new TextOperation().delete(1).insert("lo").retain(2).retain(3);
-  var op2 = new TextOperation().delete(-1).insert("l").insert("o").retain(5);
+  var op1 = new TextOperation()['delete'](1).insert("lo").retain(2).retain(3);
+  var op2 = new TextOperation()['delete'](-1).insert("l").insert("o").retain(5);
   test.ok(op1.equals(op2));
-  op1.delete(1);
+  op1['delete'](1);
   op2.retain(1);
   test.ok(!op1.equals(op2));
   test.done();
@@ -84,22 +84,22 @@ exports.testOpsMerging = function (test) {
   test.strictEqual(0, o.ops.length);
   o.retain(2);
   test.strictEqual(1, o.ops.length);
-  test.strictEqual(2, last(o.ops).retain);
+  test.strictEqual(2, last(o.ops));
   o.retain(3);
   test.strictEqual(1, o.ops.length);
-  test.strictEqual(5, last(o.ops).retain);
+  test.strictEqual(5, last(o.ops));
   o.insert("abc");
   test.strictEqual(2, o.ops.length);
-  test.strictEqual("abc", last(o.ops).insert);
+  test.strictEqual("abc", last(o.ops));
   o.insert("xyz");
   test.strictEqual(2, o.ops.length);
-  test.strictEqual("abcxyz", last(o.ops).insert);
-  o.delete("d");
+  test.strictEqual("abcxyz", last(o.ops));
+  o['delete']("d");
   test.strictEqual(3, o.ops.length);
-  test.strictEqual(1, last(o.ops).delete);
-  o.delete("d");
+  test.strictEqual(-1, last(o.ops));
+  o['delete']("d");
   test.strictEqual(3, o.ops.length);
-  test.strictEqual(2, last(o.ops).delete);
+  test.strictEqual(-2, last(o.ops));
   test.done();
 };
 
@@ -107,7 +107,7 @@ exports.testToString = function (test) {
   var o = new TextOperation();
   o.retain(2);
   o.insert('lorem');
-  o.delete('ipsum');
+  o['delete']('ipsum');
   o.retain(5);
   test.strictEqual("retain 2, insert 'lorem', delete 5, retain 5", o.toString());
   test.done();
@@ -123,12 +123,7 @@ exports.testFromJSON = function (test) {
   var obj = {
     baseLength: 4,
     targetLength: 5,
-    ops: [
-      { retain: 2 },
-      { delete: "a" },
-      { delete: "b" },
-      { insert: "cde" }
-    ]
+    ops: [2, -1, -1, 'cde']
   };
   var o = TextOperation.fromJSON(obj);
   test.strictEqual(3, o.ops.length);
@@ -154,7 +149,7 @@ exports.testFromJSON = function (test) {
   assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
   assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
-  assertIncorrectAfter(function (obj2) { obj2.ops.push({ lorem: 'no such operation' }); });
+  assertIncorrectAfter(function (obj2) { obj2.ops.push(null); });
   test.done();
 };
 

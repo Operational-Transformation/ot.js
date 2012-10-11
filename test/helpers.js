@@ -16,13 +16,15 @@ function randomString (n) {
 function randomOperation (str) {
   var operation = new TextOperation();
   var left;
-  while (left = str.length - operation.baseLength) {
+  while (true) {
+    left = str.length - operation.baseLength;
+    if (left === 0) { break; }
     var r = Math.random();
     var l = 1 + randomInt(Math.min(left, 20));
     if (r < 0.2) {
       operation.insert(randomString(l));
     } else if (r < 0.4) {
-      operation.delete(str.slice(operation.baseLength, operation.baseLength + l));
+      operation['delete'](str.slice(operation.baseLength, operation.baseLength + l));
     } else {
       operation.retain(l);
     }

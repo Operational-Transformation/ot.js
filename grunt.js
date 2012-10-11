@@ -17,7 +17,7 @@ module.exports = function(grunt) {
       ].join('\n')
     },
     lint: {
-      files: ['grunt.js', 'lib/**/*.js', 'test/*.js', 'test/lib/*.js', 'test/phantomjs/*.js']
+      files: ['grunt.js', 'lib/**/*.js', 'test/*.js', 'test/lib/*.js', 'test/phantomjs/test*.js']
     },
     test: {
       files: ['test/lib/*.js']
@@ -50,7 +50,7 @@ module.exports = function(grunt) {
     },
     watch: {
       files: '<config:lint.files>',
-      tasks: 'test qunit'
+      tasks: 'default'
     },
     jshint: {
       options: {
@@ -75,6 +75,6 @@ module.exports = function(grunt) {
   });
 
   // Default task.
-  grunt.registerTask('default', 'lint test concat min');
+  grunt.registerTask('default', 'lint test concat min qunit');
 
 };

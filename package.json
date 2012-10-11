@@ -22,7 +22,7 @@
     "grunt": "*"
   },
   "scripts": {
-    "test": "grunt test qunit"
+    "test": "grunt lint test qunit"
   },
   "licenses": [
     {

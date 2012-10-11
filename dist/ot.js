@@ -34,6 +34,37 @@ ot.TextOperation = (function () {
     this.targetLength = 0;
   }
 
+  TextOperation.prototype.equals = function (other) {
+    if (this.baseLength !== other.baseLength) { return false; }
+    if (this.targetLength !== other.targetLength) { return false; }
+    if (this.ops.length !== other.ops.length) { return false; }
+    for (var i = 0; i < this.ops.length; i++) {
+      if (this.ops[i] !== other.ops[i]) { return false; }
+    }
+    return true;
+  };
+
+  // Operation are essentially lists of ops. There are three types of ops:
+  //
+  // * Retain ops: Advance the cursor position by a given number of characters.
+  //   Represented by positive ints.
+  // * Insert ops: Insert a given string at the current cursor position.
+  //   Represented by strings.
+  // * Delete ops: Delete the next n characters. Represented by negative ints.
+
+  var isRetain = TextOperation.isRetain = function (op) {
+    return typeof op === 'number' && op > 0;
+  };
+
+  var isInsert = TextOperation.isInsert = function (op) {
+    return typeof op === 'string';
+  };
+
+  var isDelete = TextOperation.isDelete = function (op) {
+    return typeof op === 'number' && op < 0;
+  };
+
+
   // After an operation is constructed, the user of the library can specify the
   // actions of an operation (skip/insert/delete) with these three builder
   // methods. They all return the operation for convenient chaining.
@@ -46,61 +77,45 @@ ot.TextOperation = (function () {
     if (n === 0) { return this; }
     this.baseLength += n;
     this.targetLength += n;
-    var lastOp = this.ops[this.ops.length-1];
-    if (lastOp && lastOp.retain) {
+    if (isRetain(this.ops[this.ops.length-1])) {
       // The last op is a retain op => we can merge them into one op.
-      lastOp.retain += n;
+      this.ops[this.ops.length-1] += n;
     } else {
       // Create a new op.
-      this.ops.push({ retain: n });
+      this.ops.push(n);
     }
     return this;
   };
 
-  TextOperation.prototype.equals = function (other) {
-    if (this.baseLength !== other.baseLength) { return false; }
-    if (this.targetLength !== other.targetLength) { return false; }
-    if (this.ops.length !== other.ops.length) { return false; }
-    for (var i = 0; i < this.ops.length; i++) {
-      var t = this.ops[i], o = other.ops[i];
-      if (t.retain && t.retain !== o.retain) { return false; }
-      if (t.insert && t.insert !== o.insert) { return false; }
-      if (t.delete && t.delete !== o.delete) { return false; }
-    }
-    return true;
-  }
-
   // Insert a string at the current position.
   TextOperation.prototype.insert = function (str) {
     if (typeof str !== 'string') {
-      throw new Error("insert expects a string")
+      throw new Error("insert expects a string");
     }
     if (str === '') { return this; }
     this.targetLength += str.length;
-    var lastOp = this.ops[this.ops.length-1];
-    if (lastOp && lastOp.insert) {
+    if (isInsert(this.ops[this.ops.length-1])) {
       // Merge insert op.
-      lastOp.insert += str;
+      this.ops[this.ops.length-1] += str;
     } else {
-      this.ops.push({ insert: str });
+      this.ops.push(str);
     }
     return this;
   };
 
   // Delete a string at the current position.
-  TextOperation.prototype.delete = function (n) {
+  TextOperation.prototype['delete'] = function (n) {
     if (typeof n === 'string') { n = n.length; }
     if (typeof n !== 'number') {
       throw new Error("delete expects an integer or a string");
     }
     if (n === 0) { return this; }
-    if (n < 0) { n = -n; }
-    this.baseLength += n;
-    var lastOp = this.ops[this.ops.length-1];
-    if (lastOp && lastOp.delete) {
-      lastOp.delete += n;
+    if (n > 0) { n = -n; }
+    this.baseLength -= n;
+    if (isDelete(this.ops[this.ops.length-1])) {
+      this.ops[this.ops.length-1] += n;
     } else {
-      this.ops.push({ delete: n });
+      this.ops.push(n);
     }
     return this;
   };
@@ -118,11 +133,13 @@ ot.TextOperation = (function () {
       return newArr;
     };
     return map.call(this.ops, function (op) {
-      return op.retain
-             ? "retain " + op.retain
-             : (op.insert
-                ? "insert '" + op.insert + "'"
-                : "delete " + op.delete);
+      if (isRetain(op)) {
+        return "retain " + op;
+      } else if (isInsert(op)) {
+        return "insert '" + op + "'";
+      } else {
+        return "delete " + (-op);
+      }
     }).join(', ');
   };
 
@@ -137,12 +154,12 @@ ot.TextOperation = (function () {
     var ops = obj.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
-      if (op.retain) {
-        o.retain(op.retain);
-      } else if (op.insert) {
-        o.insert(op.insert);
-      } else if (op.delete) {
-        o.delete(op.delete);
+      if (isRetain(op)) {
+        o.retain(op);
+      } else if (isInsert(op)) {
+        o.insert(op);
+      } else if (isDelete(op)) {
+        o['delete'](op);
       } else {
         throw new Error("unknown operation: " + JSON.stringify(op));
       }
@@ -168,18 +185,18 @@ ot.TextOperation = (function () {
     var ops = this.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
-      if (op.retain) {
-        if (strIndex + op.retain > str.length) {
+      if (isRetain(op)) {
+        if (strIndex + op > str.length) {
           throw new Error("Operation can't retain more characters than are left in the string.");
         }
         // Copy skipped part of the old string.
-        newStr[j++] = str.slice(strIndex, strIndex + op.retain);
-        strIndex += op.retain;
-      } else if (op.insert) {
+        newStr[j++] = str.slice(strIndex, strIndex + op);
+        strIndex += op;
+      } else if (isInsert(op)) {
         // Insert string.
-        newStr[j++] = op.insert;
+        newStr[j++] = op;
       } else { // delete op
-        strIndex += op.delete;
+        strIndex -= op;
       }
     }
     if (strIndex !== str.length) {
@@ -198,14 +215,14 @@ ot.TextOperation = (function () {
     var ops = this.ops;
     for (var i = 0, l = ops.length; i < l; i++) {
       var op = ops[i];
-      if (op.retain) {
-        inverse.retain(op.retain);
-        strIndex += op.retain;
-      } else if (op.insert) {
-        inverse.delete(op.insert.length);
+      if (isRetain(op)) {
+        inverse.retain(op);
+        strIndex += op;
+      } else if (isInsert(op)) {
+        inverse['delete'](op.length);
       } else { // delete op
-        inverse.insert(str.slice(strIndex, strIndex + op.delete));
-        strIndex += op.delete;
+        inverse.insert(str.slice(strIndex, strIndex - op));
+        strIndex -= op;
       }
     }
     return inverse;
@@ -232,13 +249,13 @@ ot.TextOperation = (function () {
         break;
       }
 
-      if (op1 && op1.delete) {
-        operation.delete(op1.delete);
+      if (isDelete(op1)) {
+        operation['delete'](op1);
         op1 = ops1[i1++];
         continue;
       }
-      if (op2 && op2.insert) {
-        operation.insert(op2.insert);
+      if (isInsert(op2)) {
+        operation.insert(op2);
         op2 = ops2[i2++];
         continue;
       }
@@ -250,61 +267,58 @@ ot.TextOperation = (function () {
         throw new Error("Cannot compose operations: fist operation is too long.");
       }
 
-      // save length of current ops
-      var op1l = op1.retain || op1.delete || op1.insert.length;
-      var op2l = op2.retain || op2.delete || op2.insert.length;
-      var minl = Math.min(op1l, op2l);
-
-      if (op1.retain && op2.retain) {
-        operation.retain(minl);
-        if (op1l > op2l) {
-          op1 = { retain: op1l - op2l };
+      if (isRetain(op1) && isRetain(op2)) {
+        if (op1 > op2) {
+          operation.retain(op2);
+          op1 = op1 - op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (op1 === op2) {
+          operation.retain(op1);
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          operation.retain(op1);
+          op2 = op2 - op1;
           op1 = ops1[i1++];
-          op2 = { retain: op2l - op1l };
         }
-      } else if (op1.insert && op2.delete) {
-        if (op1l > op2l) {
-          op1 = { insert: op1.insert.slice(op2l) };
+      } else if (isInsert(op1) && isDelete(op2)) {
+        if (op1.length > -op2) {
+          op1 = op1.slice(-op2);
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (op1.length === -op2) {
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          op2 = op2 + op1.length;
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete - op1l };
         }
-      } else if (op1.insert && op2.retain) {
-        if (op1l > op2l) {
-          operation.insert(op1.insert.slice(0, op2l));
-          op1 = { insert: op1.insert.slice(op2l) };
+      } else if (isInsert(op1) && isRetain(op2)) {
+        if (op1.length > op2) {
+          operation.insert(op1.slice(0, op2));
+          op1 = op1.slice(op2);
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
-          operation.insert(op1.insert);
+        } else if (op1.length === op2) {
+          operation.insert(op1);
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
-          operation.insert(op1.insert);
+          operation.insert(op1);
+          op2 = op2 - op1.length;
           op1 = ops1[i1++];
-          op2 = { retain: op2l - op1l };
         }
-      } else if (op1.retain && op2.delete) {
-        if (op1l > op2l) {
-          operation.delete(op2.delete);
-          op1 = { retain: op1l - op2l };
+      } else if (isRetain(op1) && isDelete(op2)) {
+        if (op1 > -op2) {
+          operation['delete'](op2);
+          op1 = op1 + op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
-          operation.delete(op2.delete);
+        } else if (op1 === -op2) {
+          operation['delete'](op2);
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
-          operation.delete(op1l);
+          operation['delete'](op1);
+          op2 = op2 + op1;
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete - op1l };
         }
       } else {
         throw new Error(
@@ -335,6 +349,10 @@ ot.TextOperation = (function () {
     var i1 = 0, i2 = 0;
     var op1 = ops1[i1++], op2 = ops2[i2++];
     while (true) {
+      // At every iteration of the loop, the imaginary cursor that both
+      // operation1 and operation2 have that operates on the input string must
+      // have the same position in the input string.
+
       if (typeof op1 === 'undefined' && typeof op2 === 'undefined') {
         // end condition: both ops1 and ops2 have been processed
         break;
@@ -343,15 +361,15 @@ ot.TextOperation = (function () {
       // next two cases: one or both ops are insert ops
       // => insert the string in the corresponding prime operation, skip it in
       // the other one. If both op1 and op2 are insert ops, prefer op1.
-      if (op1 && op1.insert) {
-        operation1prime.insert(op1.insert);
-        operation2prime.retain(op1.insert.length);
+      if (isInsert(op1)) {
+        operation1prime.insert(op1);
+        operation2prime.retain(op1.length);
         op1 = ops1[i1++];
         continue;
       }
-      if (op2 && op2.insert) {
-        operation1prime.retain(op2.insert.length);
-        operation2prime.insert(op2.insert);
+      if (isInsert(op2)) {
+        operation1prime.retain(op2.length);
+        operation2prime.insert(op2);
         op2 = ops2[i2++];
         continue;
       }
@@ -363,76 +381,80 @@ ot.TextOperation = (function () {
         throw new Error("Cannot compose operations: fist operation is too long.");
       }
 
-      // At every iteration of the loop, the imaginary cursor that both
-      // operation1 and operation2 have that operates on the input string must
-      // have the same position in the input string.
-      var op1l = op1.retain || op1.delete || op1.insert.length;
-      var op2l = op2.retain || op2.delete || op2.insert.length;
-      var minl = Math.min(op1l, op2l);
-
-      if (op1.retain && op2.retain) {
+      var minl;
+      if (isRetain(op1) && isRetain(op2)) {
         // Simple case: retain/retain
-        operation1prime.retain(minl);
-        operation2prime.retain(minl);
-        if (op1l > op2l) {
-          op1 = { retain: op1l - op2l };
+        if (op1 > op2) {
+          minl = op2;
+          op1 = op1 - op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (op1 === op2) {
+          minl = op2;
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          minl = op1;
+          op2 = op2 - op1;
           op1 = ops1[i1++];
-          op2 = { retain: op2l - op1l };
         }
-      } else if (op1.delete && op2.delete) {
+        operation1prime.retain(minl);
+        operation2prime.retain(minl);
+      } else if (isDelete(op1) && isDelete(op2)) {
         // Both operations delete the same string at the same position. We don't
         // need to produce any operations, we just skip over the delete ops and
         // handle the case that one operation deletes more than the other.
-        if (op1l > op2l) {
-          op1 = { delete: op1.delete - op2l };
+        if (-op1 > -op2) {
+          op1 = op1 - op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (op1 === op2) {
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          op2 = op2 - op1;
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete - op1l };
         }
       // next two cases: delete/retain and retain/delete
-      } else if (op1.delete && op2.retain) {
-        operation1prime.delete(minl);
-        if (op1l > op2l) {
-          op1 = { delete: op1.delete - op2l };
+      } else if (isDelete(op1) && isRetain(op2)) {
+        if (-op1 > op2) {
+          minl = op2;
+          op1 = op1 + op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (-op1 === op2) {
+          minl = op2;
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          minl = -op1;
+          op2 = op2 + op1;
           op1 = ops1[i1++];
-          op2 = { retain: op2.retain - op1l };
         }
-      } else if (op1.retain && op2.delete) {
-        operation2prime.delete(minl);
-        if (op1l > op2l) {
-          op1 = { retain: op1.retain - op2l };
+        operation1prime['delete'](minl);
+      } else if (isRetain(op1) && isDelete(op2)) {
+        if (op1 > -op2) {
+          minl = -op2;
+          op1 = op1 + op2;
           op2 = ops2[i2++];
-        } else if (op1l === op2l) {
+        } else if (op1 === -op2) {
+          minl = op1;
           op1 = ops1[i1++];
           op2 = ops2[i2++];
         } else {
+          minl = op1;
+          op2 = op2 + op1;
           op1 = ops1[i1++];
-          op2 = { delete: op2.delete - op1l };
         }
+        operation2prime['delete'](minl);
       } else {
         throw new Error("The two operations aren't compatible");
       }
     }
+
     return [operation1prime, operation2prime];
   };
 
   return TextOperation;
 
-})();
+}());
 
 // Export for CommonJS
 if (typeof module === 'object') {
@@ -487,7 +509,7 @@ ot.WrappedOperation = (function (global) {
 
   return WrappedOperation;
 
-})(this);
+}(this));
 
 // Export for CommonJS
 if (typeof module === 'object') {
@@ -652,17 +674,21 @@ ot.Client = (function (global) {
 
   return Client;
 
-})(this);
+}(this));
 
 if (typeof module === 'object') {
   module.exports = ot.Client;
 }
+/*global ot */
+
 (function () {
   // Monkey patching, yay!
 
+  var TextOperation = ot.TextOperation;
+
   // The oldValue is needed to find
-  ot.TextOperation.fromCodeMirrorChange = function (change, oldValue) {
-    var operation = new ot.TextOperation();
+  TextOperation.fromCodeMirrorChange = function (change, oldValue) {
+    var operation = new TextOperation();
     // Holds the current value
     var lines = oldValue.split('\n');
 
@@ -726,7 +752,7 @@ if (typeof module === 'object') {
       var to     = indexFromPos(change.to);
       var length = getLength();
       operation.retain(from);
-      operation.delete(getRange(change.from, change.to));
+      operation['delete'](getRange(change.from, change.to));
       operation.insert(change.text.join('\n'));
       operation.retain(length - to);
       replaceRange(change.text, change.from, change.to);
@@ -743,7 +769,7 @@ if (typeof module === 'object') {
       //assert(operation.targetLength === getLength());
       change = change.next;
       if (!change) { break; }
-      var nextOperation = new ot.TextOperation(operation.revision + 1);
+      var nextOperation = new TextOperation(operation.revision + 1);
       generateOperation(nextOperation, change);
       //oldValue = nextOperation.apply(oldValue);
       //assert(oldValue === lines.join('\n'));
@@ -754,21 +780,21 @@ if (typeof module === 'object') {
   };
 
   // Apply an operation to a CodeMirror instance.
-  ot.TextOperation.prototype.applyToCodeMirror = function (cm) {
+  TextOperation.prototype.applyToCodeMirror = function (cm) {
     var operation = this;
     cm.operation(function () {
       var ops = operation.ops;
       var index = 0; // holds the current index into CodeMirror's content
       for (var i = 0, l = ops.length; i < l; i++) {
         var op = ops[i];
-        if (op.retain) {
-          index += op.retain;
-        } else if (op.insert) {
-          cm.replaceRange(op.insert, cm.posFromIndex(index));
-          index += op.insert.length;
-        } else if (op.delete) {
+        if (TextOperation.isRetain(op)) {
+          index += op;
+        } else if (TextOperation.isInsert(op)) {
+          cm.replaceRange(op, cm.posFromIndex(index));
+          index += op.length;
+        } else if (TextOperation.isDelete(op)) {
           var from = cm.posFromIndex(index);
-          var to   = cm.posFromIndex(index + op.delete);
+          var to   = cm.posFromIndex(index - op);
           cm.replaceRange('', from, to);
         }
       }
@@ -784,7 +810,9 @@ if (typeof module === 'object') {
     }
   }
 
-})();
+}());
+/*global ot */
+
 ot.CodeMirrorClient = (function () {
   var Client = ot.Client;
   var TextOperation = ot.TextOperation;
@@ -907,10 +935,10 @@ ot.CodeMirrorClient = (function () {
       delete this.mark;
     }
 
-    var cursorPos = cm.posFromIndex(cursor);
+    var cursorPos = this.cm.posFromIndex(cursor);
     if (cursor === selectionEnd) {
       // show cursor
-      var cursorCoords = cm.cursorCoords(cursorPos);
+      var cursorCoords = this.cm.cursorCoords(cursorPos);
       this.cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.85 + 'px';
       this.cm.addWidget(cursorPos, this.cursorEl, false);
     } else {
@@ -988,7 +1016,7 @@ ot.CodeMirrorClient = (function () {
   function cleanNoops (stack) {
     function isNoop (operation) {
       var ops = operation.ops;
-      return ops.length === 0 || (ops.length === 1 && !!ops[0].retain);
+      return ops.length === 0 || (ops.length === 1 && TextOperation.isRetain(ops[0]));
     }
 
     while (stack.length > 0) {
@@ -1004,17 +1032,16 @@ ot.CodeMirrorClient = (function () {
   var UNDO_DEPTH = 20;
 
   function cursorIndexAfterOperation (operation) {
-    // TODO
     var ops = operation.ops;
-    if (ops[0].retain) {
-      var index = ops[0].retain;
-      if (ops[1].insert) {
-        return index + ops[1].insert.length;
+    if (TextOperation.isRetain(ops[0])) {
+      var index = ops[0];
+      if (TextOperation.isInsert(ops[1])) {
+        return index + ops[1].length;
       } else {
         return index;
       }
-    } else if (ops[0].insert) {
-      return ops[0].insert.length;
+    } else if (TextOperation.isInsert(ops[0])) {
+      return ops[0].length;
     } else {
       return 0;
     }
@@ -1044,21 +1071,22 @@ ot.CodeMirrorClient = (function () {
   CodeMirrorClient.prototype.addOperationToUndo = function (operation) {
     function isSimpleOperation (operation, fn) {
       var ops = operation.ops;
+      var isRetain = TextOperation.isRetain;
       switch (ops.length) {
         case 0: return true;
         case 1: return !!fn(ops[0]);
-        case 2: return !!((ops[0].retain && fn(ops[1])) || (fn(ops[0]) && ops[1].retain));
-        case 3: return !!(ops[0].retain && fn(ops[1]) && ops[2].retain);
+        case 2: return (isRetain(ops[0]) && fn(ops[1])) || (fn(ops[0]) && isRetain(ops[1]));
+        case 3: return isRetain(ops[0]) && fn(ops[1]) && isRetain(ops[2]);
         default: return false;
       }
     }
 
     function isSimpleInsert (operation) {
-      return isSimpleOperation(operation, function (op) { return op.insert; });
+      return isSimpleOperation(operation, TextOperation.isInsert);
     }
 
     function isSimpleDelete (operation) {
-      return isSimpleOperation(operation, function (op) { return op.delete; });
+      return isSimpleOperation(operation, TextOperation.isDelete);
     }
 
     function shouldBeComposed (a, b) {
@@ -1066,11 +1094,11 @@ ot.CodeMirrorClient = (function () {
         return isSimpleInsert(a.compose(b));
       } else if (isSimpleDelete(a) && isSimpleDelete(b)) {
         var opA = a.ops[0], opsB = b.ops;
-        if (!opA.retain) { return false; }
-        if (opsB[0].delete) {
-          return opA.retain === opsB[0].delete;
+        if (!TextOperation.isRetain(opA)) { return false; }
+        if (TextOperation.isDelete(opsB[0])) {
+          return opA === -opsB[0];
         } else {
-          return opA.retain === opsB[0].retain + opsB[1].delete;
+          return opA === opsB[0] - opsB[1];
         }
       }
       return false;
@@ -1233,4 +1261,4 @@ ot.CodeMirrorClient = (function () {
   }
 
   return CodeMirrorClient;
-})();
+}());
