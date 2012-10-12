@@ -34,6 +34,7 @@ module.exports = function(grunt) {
         src: [
           '<banner:meta.banner>',
           'lib/text-operation.js',
+          'lib/cursor.js',
           'lib/wrapped-operation.js',
           'lib/client.js',
           'lib/codemirror-operation.js',

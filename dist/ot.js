@@ -94,11 +94,24 @@ ot.TextOperation = (function () {
     }
     if (str === '') { return this; }
     this.targetLength += str.length;
-    if (isInsert(this.ops[this.ops.length-1])) {
+    var ops = this.ops;
+    if (isInsert(ops[ops.length-1])) {
       // Merge insert op.
-      this.ops[this.ops.length-1] += str;
+      ops[ops.length-1] += str;
+    } else if (isDelete(ops[ops.length-1])) {
+      // It doesn't matter when an operation is applied whether the operation
+      // is delete(3), insert("something") or insert("something"), delete(3).
+      // Here we enforce that in this case, the insert op always comes first.
+      // This makes all operations that have the same effect when applied to
+      // a document of the right length equal in respect to the `equals` method.
+      if (isInsert(ops[ops.length-2])) {
+        ops[ops.length-2] += str;
+      } else {
+        ops[ops.length] = ops[ops.length-1];
+        ops[ops.length-2] = str;
+      }
     } else {
-      this.ops.push(str);
+      ops.push(str);
     }
     return this;
   };
@@ -430,7 +443,7 @@ ot.TextOperation = (function () {
         throw new Error("Cannot compose operations: first operation is too short.");
       }
       if (typeof op2 === 'undefined') {
-        throw new Error("Cannot compose operations: fist operation is too long.");
+        throw new Error("Cannot compose operations: first operation is too long.");
       }
 
       var minl;
@@ -517,6 +530,69 @@ if (typeof ot === 'undefined') {
   var ot = {};
 }
 
+ot.Cursor = (function (global) {
+
+  var TextOperation = global.ot ? global.ot.TextOperation : require('./text-operation');
+
+  // A cursor has a `position` and a `selectionEnd`. Both are zero-based indexes
+  // into the document. When nothing is selected, `selectionEnd` is equal to
+  // `position`. When there is a selection, `position` is always the side of the
+  // selection that would move if you pressed an arrow key.
+  function Cursor (position, selectionEnd) {
+    this.position = position;
+    this.selectionEnd = selectionEnd;
+  }
+
+  Cursor.prototype.equals = function (other) {
+    return this.position === other.position &&
+      this.selectionEnd === other.selectionEnd;
+  };
+
+  // Return the more current cursor information.
+  Cursor.prototype.compose = function (other) {
+    return other;
+  };
+
+  // Update the cursor with respect to an operation.
+  Cursor.prototype.transform = function (other) {
+    function transformIndex (index) {
+      var newIndex = index;
+      var ops = other.ops;
+      for (var i = 0, l = other.ops.length; i < l; i++) {
+        if (TextOperation.isRetain(ops[i])) {
+          index -= ops[i];
+        } else if (TextOperation.isInsert(ops[i])) {
+          newIndex += ops[i].length;
+        } else {
+          newIndex -= Math.min(index, -ops[i]);
+          index += ops[i];
+        }
+        if (index < 0) { break; }
+      }
+      return newIndex;
+    }
+
+    var newPosition = transformIndex(this.position);
+    if (this.position === this.selectionEnd) {
+      return new Cursor(newPosition, newPosition);
+    }
+    return new Cursor(newPosition, transformIndex(this.selectionEnd));
+  };
+
+  return Cursor;
+
+}(this));
+
+// Export for CommonJS
+if (typeof module === 'object') {
+  module.exports = ot.Cursor;
+}
+
+if (typeof ot === 'undefined') {
+  // Export for browsers
+  var ot = {};
+}
+
 ot.WrappedOperation = (function (global) {
 
   // A WrappedOperation contains an operation and corresponing metadata.
@@ -529,9 +605,15 @@ ot.WrappedOperation = (function (global) {
     return this.wrapped.apply.apply(this.wrapped, arguments);
   };
 
+  function invertMeta (meta) {}
+
   WrappedOperation.prototype.invert = function () {
-    var inverted = this.wrapped.invert.apply(this.wrapped, arguments);
-    return new WrappedOperation(inverted, this.meta);
+    var meta = this.meta;
+    return new WrappedOperation(
+      this.wrapped.invert.apply(this.wrapped, arguments),
+      typeof meta === 'object' && typeof meta.invert === 'function' ?
+        meta.invert.apply(meta, arguments) : meta
+    );
   };
 
   // Copy all properties from source to target.
@@ -543,19 +625,39 @@ ot.WrappedOperation = (function (global) {
     }
   }
 
+  function composeMeta (a, b) {
+    if (typeof a === 'object') {
+      if (typeof a.compose === 'function') { return a.compose(b); }
+      var meta = {};
+      copy(a, meta);
+      copy(b, meta);
+      return meta;
+    }
+    return b;
+  }
+
   WrappedOperation.prototype.compose = function (other) {
-    var meta = {};
-    copy(this.meta, meta);
-    copy(other.meta, meta);
-    return new WrappedOperation(this.wrapped.compose(other.wrapped), meta);
+    return new WrappedOperation(
+      this.wrapped.compose(other.wrapped),
+      composeMeta(this.meta, other.meta)
+    );
   };
+
+  function transformMeta (meta, operation) {
+    if (typeof meta === 'object') {
+      if (typeof meta.transform === 'function') {
+        return meta.transform(operation);
+      }
+    }
+    return meta;
+  }
 
   WrappedOperation.transform = function (a, b) {
     var transform = a.wrapped.constructor.transform;
     var pair = transform(a.wrapped, b.wrapped);
     return [
-      new WrappedOperation(pair[0], a.meta),
-      new WrappedOperation(pair[1], b.meta)
+      new WrappedOperation(pair[0], transformMeta(a.meta, b.wrapped)),
+      new WrappedOperation(pair[1], transformMeta(b.meta, a.wrapped))
     ];
   };
 
