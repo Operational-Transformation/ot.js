@@ -120,6 +120,11 @@ ot.TextOperation = (function () {
     return this;
   };
 
+  // Tests whether this operation has no effect.
+  TextOperation.prototype.isNoop = function () {
+    return this.ops.length === 0 || (this.ops.length === 1 && isRetain(this.ops[0]));
+  };
+
   // Pretty printing.
   TextOperation.prototype.toString = function () {
     // map: build a new array by applying a function to every element in an old
@@ -329,6 +334,53 @@ ot.TextOperation = (function () {
       }
     }
     return operation;
+  };
+
+  // When you use ctrl-z to undo your latest changes, you expect the program not
+  // to undo every single keystroke but to undo your last sentence you wrote at
+  // a stretch or the deletion you did by holding the backspace key down. This
+  // This can be implemented by composing operations on the undo stack. This
+  // method can help decide whether two operations should be composed. It
+  // returns true if the operations are consecutive insert operations or both
+  // operations delete text at the same position. You may want to include other
+  // factors like the time since the last change in your decision.
+  TextOperation.prototype.shouldBeComposedWith = function (other) {
+    function getSimpleOp (operation, fn) {
+      var ops = operation.ops;
+      var isRetain = TextOperation.isRetain;
+      switch (ops.length) {
+      case 1:
+        return ops[0];
+      case 2:
+        return isRetain(ops[0]) ? ops[1] : (isRetain(ops[1]) ? ops[0] : null);
+      case 3:
+        if (isRetain(ops[0]) && isRetain(ops[2])) { return ops[1]; }
+      }
+      return null;
+    }
+
+    function getStartIndex (operation) {
+      if (isRetain(operation.ops[0])) { return operation.ops[0]; }
+      return 0;
+    }
+
+    if (this.isNoop() || other.isNoop()) { return true; }
+
+    var startA = getStartIndex(this), startB = getStartIndex(other);
+    var simpleA = getSimpleOp(this), simpleB = getSimpleOp(other);
+    if (!simpleA || !simpleB) { return false; }
+
+    if (isInsert(simpleA) && isInsert(simpleB)) {
+      return startA + simpleA.length === startB;
+    }
+
+    if (isDelete(simpleA) && isDelete(simpleB)) {
+      // there are two possibilities to delete: with backspace and with the
+      // delete key.
+      return (startB - simpleB === startA) || startA === startB;
+    }
+
+    return false;
   };
 
   // Transform takes two operations A and B that happened concurrently and
@@ -1014,14 +1066,9 @@ ot.CodeMirrorClient = (function () {
   };
 
   function cleanNoops (stack) {
-    function isNoop (operation) {
-      var ops = operation.ops;
-      return ops.length === 0 || (ops.length === 1 && TextOperation.isRetain(ops[0]));
-    }
-
     while (stack.length > 0) {
       var operation = stack[stack.length - 1];
-      if (isNoop(operation)) {
+      if (operation.isNoop()) {
         stack.pop();
       } else {
         break;
@@ -1069,46 +1116,11 @@ ot.CodeMirrorClient = (function () {
   };
 
   CodeMirrorClient.prototype.addOperationToUndo = function (operation) {
-    function isSimpleOperation (operation, fn) {
-      var ops = operation.ops;
-      var isRetain = TextOperation.isRetain;
-      switch (ops.length) {
-        case 0: return true;
-        case 1: return !!fn(ops[0]);
-        case 2: return (isRetain(ops[0]) && fn(ops[1])) || (fn(ops[0]) && isRetain(ops[1]));
-        case 3: return isRetain(ops[0]) && fn(ops[1]) && isRetain(ops[2]);
-        default: return false;
-      }
-    }
-
-    function isSimpleInsert (operation) {
-      return isSimpleOperation(operation, TextOperation.isInsert);
-    }
-
-    function isSimpleDelete (operation) {
-      return isSimpleOperation(operation, TextOperation.isDelete);
-    }
-
-    function shouldBeComposed (a, b) {
-      if (isSimpleInsert(a) && isSimpleInsert(b)) {
-        return isSimpleInsert(a.compose(b));
-      } else if (isSimpleDelete(a) && isSimpleDelete(b)) {
-        var opA = a.ops[0], opsB = b.ops;
-        if (!TextOperation.isRetain(opA)) { return false; }
-        if (TextOperation.isDelete(opsB[0])) {
-          return opA === -opsB[0];
-        } else {
-          return opA === opsB[0] - opsB[1];
-        }
-      }
-      return false;
-    }
-
     if (this.undoStack.length === 0) {
       this.undoStack.push(operation);
     } else {
       var lastOperation = this.undoStack[this.undoStack.length - 1];
-      if (shouldBeComposed(operation, lastOperation)) {
+      if (operation.shouldBeComposedWith(lastOperation)) {
         var composed = operation.compose(lastOperation);
         this.undoStack[this.undoStack.length - 1] = composed;
       } else {

@@ -103,6 +103,18 @@ exports.testOpsMerging = function (test) {
   test.done();
 };
 
+exports.testIsNoop = function (test) {
+  var o = new TextOperation();
+  test.ok(o.isNoop());
+  o.retain(5);
+  test.ok(o.isNoop());
+  o.retain(3);
+  test.ok(o.isNoop());
+  o.insert("lorem");
+  test.ok(!o.isNoop());
+  test.done();
+};
+
 exports.testToString = function (test) {
   var o = new TextOperation();
   o.retain(2);
@@ -150,6 +162,36 @@ exports.testFromJSON = function (test) {
   assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; });
   assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
   assertIncorrectAfter(function (obj2) { obj2.ops.push(null); });
+  test.done();
+};
+
+exports.testShouldBeComposedWith = function (test) {
+  function make () { return new TextOperation(); }
+  var a, b;
+
+  a = make().retain(3);
+  b = make().retain(1).insert("tag").retain(2);
+  test.ok(a.shouldBeComposedWith(b));
+  test.ok(b.shouldBeComposedWith(a));
+
+  a = make().retain(1).insert("a").retain(2);
+  b = make().retain(2).insert("b").retain(2);
+  test.ok(a.shouldBeComposedWith(b));
+  a['delete'](3);
+  test.ok(!a.shouldBeComposedWith(b));
+
+  a = make().retain(1).insert("b").retain(2);
+  b = make().retain(1).insert("a").retain(3);
+  test.ok(!a.shouldBeComposedWith(b));
+
+  a = make().retain(4)['delete'](3).retain(10);
+  b = make().retain(2)['delete'](2).retain(10);
+  test.ok(a.shouldBeComposedWith(b));
+  b = make().retain(4)['delete'](7).retain(3);
+  test.ok(a.shouldBeComposedWith(b));
+  b = make().retain(2)['delete'](9).retain(3);
+  test.ok(!a.shouldBeComposedWith(b));
+  
   test.done();
 };
 
