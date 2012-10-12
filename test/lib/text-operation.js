@@ -191,7 +191,7 @@ exports.testShouldBeComposedWith = function (test) {
   test.ok(a.shouldBeComposedWith(b));
   b = make().retain(2)['delete'](9).retain(3);
   test.ok(!a.shouldBeComposedWith(b));
-  
+
   test.done();
 };
 
@@ -212,7 +212,7 @@ exports.testCompose = h.randomTest(n, function (test) {
 });
 
 exports.testTransform = h.randomTest(n, function (test) {
-  // invariant: apply(str, compose(a, b')) = apply(compose(b, a'))
+  // invariant: compose(a, b') = compose(b, a')
   // where (a', b') = transform(a, b)
   var str = h.randomString(20);
   var a = h.randomOperation(str);
@@ -224,5 +224,6 @@ exports.testTransform = h.randomTest(n, function (test) {
   var baPrime = b.compose(aPrime);
   var afterAbPrime = abPrime.apply(str);
   var afterBaPrime = baPrime.apply(str);
+  test.ok(abPrime.equals(baPrime));
   test.strictEqual(afterAbPrime, afterBaPrime);
 });
