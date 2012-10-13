@@ -1142,9 +1142,7 @@ ot.CodeMirrorClient = (function () {
     this.cursorEl.style.borderLeftStyle = 'solid';
     this.cursorEl.innerHTML = '&nbsp;';
 
-    if (typeof cursor === 'number' && typeof selectionEnd === 'number') {
-      this.updateCursor(cursor);
-    }
+    if (cursor) { this.updateCursor(cursor); }
     this.setColor(name ? hueFromName(name) : Math.random());
   }
 
@@ -1276,7 +1274,7 @@ ot.CodeMirrorClient = (function () {
         client.clientId = clientId;
         this.clients[clientId] = new OtherClient(
           client.clientId, this.clientListEl, this.cm,
-          client.name, Cursor.fromJSON(client.cursor)
+          client.name, client.cursor ? Cursor.fromJSON(client.cursor) : null
         );
       }
     }
