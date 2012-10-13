@@ -36,6 +36,7 @@ module.exports = function(grunt) {
           'lib/text-operation.js',
           'lib/cursor.js',
           'lib/wrapped-operation.js',
+          'lib/undo-manager.js',
           'lib/client.js',
           'lib/codemirror-operation.js',
           'lib/codemirror-client.js'

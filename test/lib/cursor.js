@@ -1,6 +1,14 @@
 var Cursor = require('../../lib/cursor');
 var TextOperation = require('../../lib/text-operation');
 
+exports.testFromJSON = function (test) {
+  var cursor = Cursor.fromJSON({ position: 3, selectionEnd: 5 });
+  test.ok(cursor instanceof Cursor);
+  test.strictEqual(cursor.position, 3);
+  test.strictEqual(cursor.selectionEnd, 5);
+  test.done();
+};
+
 exports.testTransform = function (test) {
   var cursor = new Cursor(3, 7);
   test.ok(cursor
