@@ -16,8 +16,8 @@ dist-core:
 
 dist-cm: dist-core
 	@for file in  \
-	  lib/codemirror-operation.js  \
-	  lib/codemirror-client.js  \
+	  lib/codemirror/codemirror-operation.js  \
+	  lib/codemirror/codemirror-client.js  \
 	; do echo >> dist/ot.js && cat $$file >> dist/ot.js ; done
 
 .PHONY: docs dist dist-core dist-cm

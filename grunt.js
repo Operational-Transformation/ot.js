@@ -17,7 +17,7 @@ module.exports = function(grunt) {
       ].join('\n')
     },
     lint: {
-      files: ['grunt.js', 'lib/**/*.js', 'test/*.js', 'test/lib/*.js', 'test/phantomjs/test*.js']
+      files: ['grunt.js', 'lib/**/*.js', 'lib/codemirror/*.js', 'test/*.js', 'test/lib/*.js', 'test/phantomjs/test*.js']
     },
     test: {
       files: ['test/lib/*.js']
@@ -38,8 +38,8 @@ module.exports = function(grunt) {
           'lib/wrapped-operation.js',
           'lib/undo-manager.js',
           'lib/client.js',
-          'lib/codemirror-operation.js',
-          'lib/codemirror-client.js'
+          'lib/codemirror/codemirror-operation.js',
+          'lib/codemirror/codemirror-client.js'
         ],
         dest: 'dist/ot.js'
       }
