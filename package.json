@@ -1,6 +1,6 @@
 {
-  "name": "operational-transformation",
-  "description": "Collaborative editing using operational transformation",
+  "name": "ot",
+  "description": "Fast and reliable library for Operational Transformation",
   "keywords": [
     "operational transformation",
     "ot"
@@ -15,7 +15,7 @@
   "bugs": {
     "url": "https://github.com/timjb/javascript-operational-transformation/issues"
   },
-  "main": "./lib/index.js",
+  "main": "./lib/ot.js",
   "dependencies": {},
   "devDependencies": {
     "socket.io": "0.9.8",
