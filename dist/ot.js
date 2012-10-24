@@ -1,10 +1,10 @@
 /*
  *    /\
- *   /  \ operational-transformation 0.0.7
+ *   /  \ ot 0.0.8
  *  /    \ http://ot.substance.io
  *  \    /
  *   \  / (c) 2012 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
- *    \/ operational-transformation may be freely distributed under the MIT license.
+ *    \/ ot may be freely distributed under the MIT license.
  */
 
 if (typeof ot === 'undefined') {

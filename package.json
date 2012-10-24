@@ -1,19 +1,18 @@
 {
-  "name": "operational-transformation",
+  "name": "ot",
   "description": "Collaborative editing using operational transformation",
   "keywords": [
-    "operational transformation",
-    "ot"
+    "operational transformation"
   ],
-  "version": "0.0.7",
+  "version": "0.0.8",
   "author": "Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)",
   "homepage": "http://ot.substance.io",
   "repository": {
     "type": "git",
-    "url": "https://github.com/timjb/javascript-operational-transformation"
+    "url": "https://github.com/timjb/ot.js"
   },
   "bugs": {
-    "url": "https://github.com/timjb/javascript-operational-transformation/issues"
+    "url": "https://github.com/timjb/ot.js/issues"
   },
   "main": "./lib/index.js",
   "dependencies": {},
@@ -27,7 +26,7 @@
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/github.com/timjb/javascript-operational-transformation/raw/master/LICENSE"
+      "url": "https://github.com/github.com/timjb/ot.js/raw/master/LICENSE"
     }
   ]
 }
