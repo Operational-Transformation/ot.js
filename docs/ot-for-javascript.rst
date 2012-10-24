@@ -12,13 +12,13 @@ Install package with NPM:
 
 ::
 
-    $ npm install operational-transformation
+    $ npm install ot
 
 Here's how to include it:
 
 .. code-block:: javascript
 
-    var ot = require('operational-transformation');
+    var ot = require('ot');
 
 
 Browser
