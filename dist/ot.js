@@ -1226,7 +1226,8 @@ ot.SocketIOAdapter = (function () {
       });
   }
 
-  SocketIOAdapter.prototype.sendOperation = function (obj) {
+  SocketIOAdapter.prototype.sendOperation = function (revision, obj) {
+    obj.revision = revision;
     this.socket.emit('operation', obj);
   };
 
@@ -1466,8 +1467,7 @@ ot.EditorClient = (function () {
   };
 
   EditorClient.prototype.sendOperation = function (revision, operation) {
-    this.serverAdapter.sendOperation({
-      revision: revision,
+    this.serverAdapter.sendOperation(revision, {
       meta: { cursor: operation.meta.cursorAfter },
       operation: operation.wrapped.toJSON()
     });
