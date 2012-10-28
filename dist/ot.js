@@ -1418,7 +1418,7 @@ ot.EditorClient = (function () {
   };
 
   EditorClient.prototype.applyUnredo = function (operation) {
-    this.undoManager.add(operation.invert(this.oldValue));
+    this.undoManager.add(operation.invert(this.editorAdapter.getValue()));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
     this.editorAdapter.setCursor(this.cursor);
