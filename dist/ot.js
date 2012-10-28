@@ -1249,7 +1249,7 @@ ot.SocketIOAdapter = (function () {
 }());
 /*global ot */
 
-ot.CodeMirrorClient = (function () {
+ot.EditorClient = (function () {
   var Client = ot.Client;
   var Cursor = ot.Cursor;
   var UndoManager = ot.UndoManager;
@@ -1341,7 +1341,7 @@ ot.CodeMirrorClient = (function () {
   };
 
 
-  function CodeMirrorClient (revision, clients, serverAdapter, editorAdapter) {
+  function EditorClient (revision, clients, serverAdapter, editorAdapter) {
     Client.call(this, revision);
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
@@ -1375,9 +1375,9 @@ ot.CodeMirrorClient = (function () {
     });
   }
 
-  inherit(CodeMirrorClient, Client);
+  inherit(EditorClient, Client);
 
-  CodeMirrorClient.prototype.initializeClients = function (clients) {
+  EditorClient.prototype.initializeClients = function (clients) {
     this.clients = {};
     for (var clientId in clients) {
       if (clients.hasOwnProperty(clientId)) {
@@ -1394,7 +1394,7 @@ ot.CodeMirrorClient = (function () {
     }
   };
 
-  CodeMirrorClient.prototype.getClientObject = function (clientId) {
+  EditorClient.prototype.getClientObject = function (clientId) {
     var client = this.clients[clientId];
     if (client) { return client; }
     return this.clients[clientId] = new OtherClient(
@@ -1404,7 +1404,7 @@ ot.CodeMirrorClient = (function () {
     );
   };
 
-  CodeMirrorClient.prototype.onClientLeft = function (clientId) {
+  EditorClient.prototype.onClientLeft = function (clientId) {
     console.log("User disconnected: " + clientId);
     var client = this.clients[clientId];
     if (!client) { return; }
@@ -1412,11 +1412,11 @@ ot.CodeMirrorClient = (function () {
     delete this.clients[clientId];
   };
 
-  CodeMirrorClient.prototype.initializeClientList = function () {
+  EditorClient.prototype.initializeClientList = function () {
     this.clientListEl = document.createElement('ul');
   };
 
-  CodeMirrorClient.prototype.applyUnredo = function (operation) {
+  EditorClient.prototype.applyUnredo = function (operation) {
     this.undoManager.add(operation.invert(this.oldValue));
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
@@ -1424,17 +1424,17 @@ ot.CodeMirrorClient = (function () {
     this.applyClient(operation);
   };
 
-  CodeMirrorClient.prototype.undo = function () {
+  EditorClient.prototype.undo = function () {
     var self = this;
     this.undoManager.performUndo(function (o) { self.applyUnredo(o); });
   };
 
-  CodeMirrorClient.prototype.redo = function () {
+  EditorClient.prototype.redo = function () {
     var self = this;
     this.undoManager.performRedo(function (o) { self.applyUnredo(o); });
   };
 
-  CodeMirrorClient.prototype.onChange = function (oldValue, textOperation) {
+  EditorClient.prototype.onChange = function (oldValue, textOperation) {
     var cursorBefore = this.cursor;
     this.updateCursor();
     var meta = new SelfMeta(cursorBefore, this.cursor);
@@ -1448,11 +1448,11 @@ ot.CodeMirrorClient = (function () {
     this.applyClient(operation);
   };
 
-  CodeMirrorClient.prototype.updateCursor = function () {
+  EditorClient.prototype.updateCursor = function () {
     this.cursor = this.editorAdapter.getCursor();
   };
 
-  CodeMirrorClient.prototype.onCursorActivity = function () {
+  EditorClient.prototype.onCursorActivity = function () {
     var oldCursor = this.cursor;
     this.updateCursor();
     if (oldCursor && this.cursor.equals(oldCursor)) { return; }
@@ -1465,7 +1465,7 @@ ot.CodeMirrorClient = (function () {
     }
   };
 
-  CodeMirrorClient.prototype.sendOperation = function (revision, operation) {
+  EditorClient.prototype.sendOperation = function (revision, operation) {
     this.serverAdapter.sendOperation({
       revision: revision,
       meta: { cursor: operation.meta.cursorAfter },
@@ -1473,7 +1473,7 @@ ot.CodeMirrorClient = (function () {
     });
   };
 
-  CodeMirrorClient.prototype.applyOperation = function (operation) {
+  EditorClient.prototype.applyOperation = function (operation) {
     this.editorAdapter.applyOperation(operation.wrapped);
     this.updateCursor();
     var client = this.getClientObject(operation.meta.clientId);
@@ -1529,5 +1529,5 @@ ot.CodeMirrorClient = (function () {
     }
   }
 
-  return CodeMirrorClient;
+  return EditorClient;
 }());
