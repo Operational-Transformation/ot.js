@@ -1080,6 +1080,49 @@ if (typeof module === 'object') {
 }());
 /*global ot */
 
+ot.SocketIOAdapter = (function () {
+
+  function SocketIOAdapter (socket) {
+    this.socket = socket;
+
+    var self = this;
+    socket
+      .on('client_left', function (obj) {
+        self.trigger('client_left', obj.clientId);
+      })
+      .on('set_name', function (obj) {
+        self.trigger('set_name', obj.clientId, obj.name);
+      })
+      .on('ack', function () { self.trigger('ack'); })
+      .on('operation', function (obj) { self.trigger('operation', obj); })
+      .on('cursor', function (obj) {
+        self.trigger('cursor', obj.clientId, obj.cursor);
+      });
+  }
+
+  SocketIOAdapter.prototype.sendOperation = function (obj) {
+    this.socket.emit('operation', obj);
+  };
+
+  SocketIOAdapter.prototype.sendCursor = function (obj) {
+    this.socket.emit('cursor', obj);
+  };
+
+  SocketIOAdapter.prototype.registerCallbacks = function (cb) {
+    this.callbacks = cb;
+  };
+
+  SocketIOAdapter.prototype.trigger = function (event) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var action = this.callbacks && this.callbacks[event];
+    if (action) { action.apply(this, args); }
+  };
+
+  return SocketIOAdapter;
+
+}());
+/*global ot */
+
 ot.CodeMirrorClient = (function () {
   var Client = ot.Client;
   var Cursor = ot.Cursor;
@@ -1207,58 +1250,42 @@ ot.CodeMirrorClient = (function () {
   };
 
 
-  function CodeMirrorClient (socket, cm) {
-    this.socket = socket;
+  function CodeMirrorClient (revision, doc, clients, adapter, cm) {
+    Client.call(this, revision);
     this.cm = cm;
+    this.initializeCodeMirror(doc);
+    this.initializeClientList();
+    this.initializeClients(clients);
+    this.adapter = adapter;
     this.fromServer = false;
     this.unredo = false;
     this.undoManager = new UndoManager();
-    this.clients = {};
-    this.initializeClientList();
 
     var self = this;
-    socket.on('doc', function (obj) {
-      Client.call(self, obj.revision);
-      self.initializeCodeMirror(obj.str);
-      self.initializeSocket();
-      self.initializeClients(obj.clients);
+    this.adapter.registerCallbacks({
+      client_left: function (clientId) { self.onClientLeft(clientId); },
+      set_name: function (clientId, name) { self.getClientObject(clientId).setName(name); },
+      ack: function () { self.serverAck(); },
+      operation: function (obj) {
+        self.applyServer(new WrappedOperation(
+          TextOperation.fromJSON(obj.operation),
+          OtherMeta.fromJSON(obj.meta)
+        ));
+      },
+      cursor: function (clientId, cursor) {
+        self.getClientObject(clientId).updateCursor(Cursor.fromJSON(cursor));
+      }
     });
   }
 
   inherit(CodeMirrorClient, Client);
-
-  CodeMirrorClient.prototype.initializeSocket = function () {
-    var self = this;
-
-    this.socket
-      .on('client_left', function (obj) {
-        self.onClientLeft(obj.clientId);
-      })
-      .on('set_name', function (obj) {
-        var client = self.getClientObject(obj.clientId);
-        client.setName(obj.name);
-      })
-      .on('ack', function () { self.serverAck(); })
-      .on('operation', function (obj) {
-        var operation = new WrappedOperation(
-          TextOperation.fromJSON(obj.operation),
-          OtherMeta.fromJSON(obj.meta)
-        );
-        console.log("Operation from server by client " + obj.meta.clientId + ":", operation);
-        self.applyServer(operation);
-      })
-      .on('cursor', function (obj) {
-        var client = self.getClientObject(obj.clientId);
-        client.updateCursor(Cursor.fromJSON(obj.cursor));
-      });
-  };
 
   CodeMirrorClient.prototype.initializeCodeMirror = function (str) {
     var cm = this.cm;
     var self = this;
 
     cm.setValue(str);
-    this.oldValue = str;
+    this.oldValue = cm.getValue();
 
     cm.on('change', function (_, change) { self.onCodeMirrorChange(change); });
     cm.on('cursorActivity', function () { self.onCodeMirrorCursorActivity(); });
@@ -1268,6 +1295,7 @@ ot.CodeMirrorClient = (function () {
   };
 
   CodeMirrorClient.prototype.initializeClients = function (clients) {
+    this.clients = {};
     for (var clientId in clients) {
       if (clients.hasOwnProperty(clientId)) {
         var client = clients[clientId];
@@ -1372,12 +1400,12 @@ ot.CodeMirrorClient = (function () {
       this.state.buffer.meta.cursorAfter = this.cursor;
     } else {
       var self = this;
-      this.socket.emit('cursor', this.cursor);
+      this.adapter.sendCursor(this.cursor);
     }
   };
 
   CodeMirrorClient.prototype.sendOperation = function (revision, operation) {
-    this.socket.emit('operation', {
+    this.adapter.sendOperation({
       revision: revision,
       meta: { cursor: operation.meta.cursorAfter },
       operation: operation.wrapped.toJSON()
