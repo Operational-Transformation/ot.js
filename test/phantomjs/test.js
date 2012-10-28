@@ -1,6 +1,8 @@
 /*global test, asyncTest, ok, start, ot, expect, CodeMirror */
 
 asyncTest("converting between CodeMirror changes and operations", function () {
+  var CodeMirrorAdapter = ot.CodeMirrorAdapter;
+
   function randomInt (n) {
     return Math.floor(Math.random() * n);
   }
@@ -49,9 +51,9 @@ asyncTest("converting between CodeMirror changes and operations", function () {
     var oldValue = str;
     var cm1 = CodeMirror(document.body, { value: str });
     cm1.on('change', function (_, change) {
-      var operation = ot.TextOperation.fromCodeMirrorChange(change, oldValue);
+      var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, oldValue);
       //console.log(change, operation);
-      operation.applyToCodeMirror(cm2);
+      CodeMirrorAdapter.applyOperationToCodeMirror(operation, cm2);
       oldValue = cm1.getValue();
     });
 

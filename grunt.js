@@ -38,7 +38,7 @@ module.exports = function(grunt) {
           'lib/wrapped-operation.js',
           'lib/undo-manager.js',
           'lib/client.js',
-          'lib/codemirror-operation.js',
+          'lib/codemirror-adapter.js',
           'lib/socketio-adapter.js',
           'lib/codemirror-client.js'
         ],
