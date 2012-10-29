@@ -1,6 +1,6 @@
 /*
  *    /\
- *   /  \ ot 0.0.9
+ *   /  \ ot 0.0.10
  *  /    \ http://ot.substance.io
  *  \    /
  *   \  / (c) 2012 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
