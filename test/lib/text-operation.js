@@ -132,36 +132,20 @@ exports.testIdJSON = h.randomTest(n, function (test) {
 });
 
 exports.testFromJSON = function (test) {
-  var obj = {
-    baseLength: 4,
-    targetLength: 5,
-    ops: [2, -1, -1, 'cde']
-  };
-  var o = TextOperation.fromJSON(obj);
+  var ops = [2, -1, -1, 'cde'];
+  var o = TextOperation.fromJSON(ops);
   test.strictEqual(3, o.ops.length);
   test.strictEqual(4, o.baseLength);
   test.strictEqual(5, o.targetLength);
 
-  function clone (obj) {
-    var copy = {};
-    for (var name in obj) {
-      if (obj.hasOwnProperty(name)) {
-        copy[name] = obj[name];
-      }
-    }
-    return copy;
-  }
-
   function assertIncorrectAfter (fn) {
-    var obj2 = clone(obj);
-    fn(obj2);
-    test.throws(function () { TextOperation.fromJSON(obj2); });
+    var ops2 = ops.slice(0);
+    fn(ops2);
+    test.throws(function () { TextOperation.fromJSON(ops2); });
   }
 
-  assertIncorrectAfter(function (obj2) { obj2.baseLength += 1; });
-  assertIncorrectAfter(function (obj2) { obj2.targetLength -= 1; });
-  assertIncorrectAfter(function (obj2) { obj2.ops.push({ insert: 'x' }); });
-  assertIncorrectAfter(function (obj2) { obj2.ops.push(null); });
+  assertIncorrectAfter(function (ops2) { ops2.push({ insert: 'x' }); });
+  assertIncorrectAfter(function (ops2) { ops2.push(null); });
   test.done();
 };
 
