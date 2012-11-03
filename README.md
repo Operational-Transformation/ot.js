@@ -1,4 +1,4 @@
-* Documentation: http://javascript-operational-transformation.readthedocs.org/en/latest/index.html
+* Documentation: http://operational-transformation.github.com/
 * Live demo: http://ot.substance.io/demo/
 * Visualization: http://ot.substance.io/visualization/
 * License: [MIT license](https://github.com/timjb/ot.js/blob/master/LICENSE)
