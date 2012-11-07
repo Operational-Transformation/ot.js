@@ -1076,8 +1076,10 @@ ot.CodeMirrorAdapter = (function () {
   };
 
   CodeMirrorAdapter.prototype.onChange = function (change) {
-    var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.oldValue);
-    if (!this.silent) { this.trigger('change', this.oldValue, operation); }
+    if (!this.silent) {
+      var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.oldValue);
+      this.trigger('change', this.oldValue, operation);
+    }
     this.oldValue = this.cm.getValue();
   };
 
