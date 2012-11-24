@@ -6,13 +6,13 @@
   ],
   "version": "0.0.10",
   "author": "Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)",
-  "homepage": "http://ot.substance.io",
+  "homepage": "http://operational-transformation.github.com",
   "repository": {
     "type": "git",
-    "url": "https://github.com/timjb/ot.js"
+    "url": "https://github.com/operational-transformation/ot.js"
   },
   "bugs": {
-    "url": "https://github.com/timjb/ot.js/issues"
+    "url": "https://github.com/operational-transformation/ot.js/issues"
   },
   "main": "./lib/index.js",
   "dependencies": {},
@@ -26,7 +26,7 @@
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/github.com/timjb/ot.js/raw/master/LICENSE"
+      "url": "https://github.com/github.com/operational-transformation/ot.js/raw/master/LICENSE"
     }
   ]
 }
