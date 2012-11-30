@@ -1,7 +1,7 @@
 /*
  *    /\
  *   /  \ ot 0.0.10
- *  /    \ http://ot.substance.io
+ *  /    \ http://operational-transformation.github.com
  *  \    /
  *   \  / (c) 2012 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
  *    \/ ot may be freely distributed under the MIT license.
@@ -1165,7 +1165,9 @@ ot.CodeMirrorAdapter = (function () {
         fromPos = this.cm.posFromIndex(cursor.selectionEnd);
         toPos = cursorPos;
       }
-      return this.cm.markText(fromPos, toPos, selectionClassName);
+      return this.cm.markText(fromPos, toPos, {
+        className: selectionClassName
+      });
     }
   };
 
