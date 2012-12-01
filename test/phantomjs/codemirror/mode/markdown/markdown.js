@@ -2,6 +2,51 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
 
   var htmlFound = CodeMirror.mimeModes.hasOwnProperty("text/html");
   var htmlMode = CodeMirror.getMode(cmCfg, htmlFound ? "text/html" : "text/plain");
+  var aliases = {
+    html: "htmlmixed",
+    js: "javascript",
+    json: "application/json",
+    c: "text/x-csrc",
+    "c++": "text/x-c++src",
+    java: "text/x-java",
+    csharp: "text/x-csharp",
+    "c#": "text/x-csharp"
+  };
+
+  var getMode = (function () {
+    var i, modes = {}, mimes = {}, mime;
+
+    var list = [];
+    for (var m in CodeMirror.modes)
+      if (CodeMirror.modes.propertyIsEnumerable(m)) list.push(m);
+    for (i = 0; i < list.length; i++) {
+      modes[list[i]] = list[i];
+    }
+    var mimesList = [];
+    for (var m in CodeMirror.mimeModes)
+      if (CodeMirror.mimeModes.propertyIsEnumerable(m))
+        mimesList.push({mime: m, mode: CodeMirror.mimeModes[m]});
+    for (i = 0; i < mimesList.length; i++) {
+      mime = mimesList[i].mime;
+      mimes[mime] = mimesList[i].mime;
+    }
+
+    for (var a in aliases) {
+      if (aliases[a] in modes || aliases[a] in mimes)
+        modes[a] = aliases[a];
+    }
+    
+    return function (lang) {
+      return modes[lang] ? CodeMirror.getMode(cmCfg, modes[lang]) : null;
+    };
+  }());
+  
+  // Should underscores in words open/close em/strong?
+  if (modeCfg.underscoresBreakWords === undefined)
+    modeCfg.underscoresBreakWords = true;
+  
+  // Turn on fenced code blocks? ("```" to start/end)
+  if (modeCfg.fencedCodeBlocks === undefined) modeCfg.fencedCodeBlocks = false;
   
   var codeDepth = 0;
   var prevLineHasContent = false
@@ -43,8 +88,6 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
   function blankLine(state) {
     // Reset linkTitle state
     state.linkTitle = false;
-    // Reset CODE state
-    state.code = false;
     // Reset EM state
     state.em = false;
     // Reset STRONG state
@@ -59,7 +102,6 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
   }
 
   function blockNormal(stream, state) {
-    var match;
     
     if (state.list !== false && state.indentationDiff >= 0) { // Continued list
       if (state.indentationDiff < 4) { // Only adjust indentation if *not* a code block
@@ -85,9 +127,15 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
       return switchInline(stream, state, footnoteLink);
     } else if (stream.match(hrRE, true)) {
       return hr;
-    } else if (match = stream.match(ulRE, true) || stream.match(olRE, true)) {
+    } else if (stream.match(ulRE, true) || stream.match(olRE, true)) {
       state.indentation += 4;
       state.list = true;
+    } else if (modeCfg.fencedCodeBlocks && stream.match(/^```([\w+#]*)/, true)) {
+      // try switching mode
+      state.localMode = getMode(RegExp.$1);
+      if (state.localMode) state.localState = state.localMode.startState();
+      switchBlock(stream, state, local);
+      return code;
     }
     
     return switchInline(stream, state, state.inline);
@@ -107,6 +155,19 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
     return style;
   }
 
+  function local(stream, state) {
+    if (stream.sol() && stream.match(/^```/, true)) {
+      state.localMode = state.localState = null;
+      state.f = inlineNormal;
+      state.block = blockNormal;
+      return code;
+    } else if (state.localMode) {
+      return state.localMode.token(stream, state.localState);
+    } else {
+      stream.skipToEnd();
+      return code;
+    }
+  }
 
   // Inline
   function getType(state) {
@@ -164,6 +225,7 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
       }
     }
     
+    // If this block is changed, it may need to be updated in GFM mode
     if (ch === '`') {
       var t = getType(state);
       var before = stream.pos;
@@ -189,12 +251,12 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
       state.inline = state.f = linkHref;
       return image;
     }
-    
-    if (ch === '[' && stream.match(/.*\] ?(?:\(|\[)/, false)) {
+
+    if (ch === '[' && stream.match(/.*\](\(| ?\[)/, false)) {
       state.linkText = true;
       return getType(state);
     }
-    
+
     if (ch === ']' && state.linkText) {
       var type = getType(state);
       state.linkText = false;
@@ -211,7 +273,6 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
     }
     
     if (ch === '<' && stream.match(/^\w/, false)) {
-      var md_inside = false;
       if (stream.string.indexOf(">")!=-1) {
         var atts = stream.string.substring(1,stream.string.indexOf(">"));
         if (/markdown\s*=\s*('|"){0,1}1('|"){0,1}/.test(atts)) {
@@ -227,8 +288,20 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
       return "tag";
     }
       
+    var ignoreUnderscore = false;
+    if (!modeCfg.underscoresBreakWords) {
+      if (ch === '_' && stream.peek() !== '_' && stream.match(/(\w)/, false)) {
+        var prevPos = stream.pos - 2;
+        if (prevPos >= 0) {
+          var prevCh = stream.string.charAt(prevPos);
+          if (prevCh !== '_' && prevCh.match(/(\w)/, false)) {
+            ignoreUnderscore = true;
+          }
+        }
+      }
+    }
     var t = getType(state);
-    if (ch === '*' || ch === '_') {
+    if (ch === '*' || (ch === '_' && !ignoreUnderscore)) {
       if (state.strong === ch && stream.eat(ch)) { // Remove STRONG
         state.strong = false;
         return t;
@@ -292,15 +365,16 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
     return linkhref;
   }
 
+  var savedInlineRE = [];
   function inlineRE(endChar) {
-    if (!inlineRE[endChar]) {
+    if (!savedInlineRE[endChar]) {
       // Escape endChar for RegExp (taken from http://stackoverflow.com/a/494122/526741)
       endChar = (endChar+'').replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
       // Match any non-endChar, escaped character, as well as the closing 
       // endChar.
-      inlineRE[endChar] = new RegExp('^(?:[^\\\\]+?|\\\\.)*?(' + endChar + ')');
+      savedInlineRE[endChar] = new RegExp('^(?:[^\\\\]|\\\\.)*?(' + endChar + ')');
     }
-    return inlineRE[endChar];
+    return savedInlineRE[endChar];
   }
 
   function inlineElement(type, endChar, next) {
@@ -343,6 +417,9 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
         block: s.block,
         htmlState: CodeMirror.copyState(htmlMode, s.htmlState),
         indentation: s.indentation,
+        
+        localMode: s.localMode,
+        localState: s.localMode ? CodeMirror.copyState(s.localMode, s.localState) : null,
           
         inline: s.inline,
         text: s.text,
@@ -371,6 +448,9 @@ CodeMirror.defineMode("markdown", function(cmCfg, modeCfg) {
 
         // Reset state.header
         state.header = false;
+        
+        // Reset state.code
+        state.code = false;
 
         state.f = state.block;
         var indentation = stream.match(/^\s*/, true)[0].replace(/\t/g, '    ').length;

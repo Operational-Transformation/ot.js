@@ -71,6 +71,17 @@ MT.testMode(
   ]
 );
 
+// Block code using single backtick (shouldn't work)
+MT.testMode(
+  'blockCodeSingleBacktick',
+  '`\nfoo\n`',
+  [
+    'comment', '`',
+    null, 'foo',
+    'comment', '`'
+  ]
+);
+
 // Unclosed backticks
 // Instead of simply marking as CODE, it would be nice to have an 
 // incomplete flag for CODE, that is styled slightly different.
@@ -779,6 +790,17 @@ MT.testMode(
     'tag', '![*foo*]',
     'string', '(http://example.com/)',
     null, ' bar'
+  ]
+);
+
+// Not a link. Should be normal text due to square brackets being used
+// regularly in text, especially in quoted material, and no space is allowed
+// between square brackets and parentheses (per Dingus).
+MT.testMode(
+  'notALink',
+  '[foo] (bar)',
+  [
+    null, '[foo] (bar)'
   ]
 );
 

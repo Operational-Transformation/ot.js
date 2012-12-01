@@ -29,9 +29,7 @@
   border-right: 1px solid #ddd;
   background-color: #f7f7f7;
 }
-.CodeMirror-linenumbers {
-  padding: 0 4px;
-}
+.CodeMirror-linenumbers {}
 .CodeMirror-linenumber {
   padding: 0 3px 0 5px;
   min-width: 20px;
@@ -88,6 +86,8 @@
 .cm-s-default .cm-hr {color: #999;}
 .cm-s-default .cm-link {color: #00c;}
 
+.cm-negative {color: #d44;}
+.cm-positive {color: #292;}
 .cm-header, .cm-strong {font-weight: bold;}
 .cm-em {font-style: italic;}
 .cm-emstrong {font-style: italic; font-weight: bold;}
@@ -152,7 +152,10 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
 }
 .CodeMirror-gutter {
   height: 100%;
-  float: left;
+  display: inline-block;
+  /* Hack to make IE7 behave */
+  *zoom:1;
+  *display:inline;
 }
 .CodeMirror-gutter-elt {
   position: absolute;
@@ -177,6 +180,7 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   color: inherit;
   z-index: 2;
   position: relative;
+  overflow: visible;
 }
 .CodeMirror-wrap pre {
   word-wrap: break-word;
@@ -187,6 +191,11 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   position: absolute;
   left: 0; right: 0; top: 0; bottom: 0;
   z-index: 0;
+}
+
+.CodeMirror-linewidget {
+  position: relative;
+  z-index: 2;
 }
 
 .CodeMirror-wrap .CodeMirror-scroll {
@@ -211,13 +220,16 @@ div.CodeMirror span.CodeMirror-nonmatchingbracket {color: #f22;}
   visibility: visible;
 }
 
-div.CodeMirror-selected { background: #d9d9d9; }
-.CodeMirror-focused div.CodeMirror-selected { background: #d7d4f0; }
+.CodeMirror-selected { background: #d9d9d9; }
+.CodeMirror-focused .CodeMirror-selected { background: #d7d4f0; }
 
 .CodeMirror-searching {
   background: #ffa;
   background: rgba(255, 255, 0, .4);
 }
+
+/* IE7 hack to prevent it from returning funny offsetTops on the spans */
+.CodeMirror span { *vertical-align: text-bottom; }
 
 @media print {
   /* Hide the cursor when printing */

@@ -14,7 +14,7 @@
 
       // Don't show completions if token has changed and the option is set.
       if (options.closeOnTokenChange && previousToken != null &&
-          (tempToken.start != previousToken.start || tempToken.className != previousToken.className)) {
+          (tempToken.start != previousToken.start || tempToken.type != previousToken.type)) {
         return;
       }
 
@@ -25,7 +25,10 @@
         editor.replaceRange(str, result.from, result.to);
       }
       // When there is only one completion, use it directly.
-      if (completions.length == 1) {insert(completions[0]); return true;}
+      if (options.completeSingle && completions.length == 1) {
+        insert(completions[0]);
+        return true;
+      }
 
       // Build the select widget
       var complete = document.createElement("div");
@@ -41,7 +44,7 @@
       }
       sel.firstChild.selected = true;
       sel.size = Math.min(10, completions.length);
-      var pos = editor.cursorCoords();
+      var pos = editor.cursorCoords(options.alignWithWord ? result.from : null);
       complete.style.left = pos.left + "px";
       complete.style.top = pos.bottom + "px";
       document.body.appendChild(complete);
@@ -71,7 +74,7 @@
         if (code == 13) {CodeMirror.e_stop(event); pick();}
         // Escape
         else if (code == 27) {CodeMirror.e_stop(event); close(); editor.focus();}
-        else if (code != 38 && code != 40 && code != 33 && code != 34) {
+        else if (code != 38 && code != 40 && code != 33 && code != 34 && !CodeMirror.isModifierKey(event)) {
           close(); editor.focus();
           // Pass the event to the CodeMirror instance so that it can handle things like backspace properly.
           editor.triggerOnKeyDown(event);
@@ -92,6 +95,8 @@
   };
   CodeMirror.simpleHint.defaults = {
     closeOnBackspace: true,
-    closeOnTokenChange: false
+    closeOnTokenChange: false,
+    completeSingle: true,
+    alignWithWord: true
   };
 })();

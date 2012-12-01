@@ -56,12 +56,13 @@ CodeMirror.defineMode("mysql", function(config) {
       curPunc = ch;
       return null;
     }
-    else if (ch == "-") {
-      var ch2 = stream.next();
-      if (ch2=="-") {
-      	stream.skipToEnd();
-      	return "comment";
-      }
+    else if (ch == "-" && stream.eat("-")) {
+      stream.skipToEnd();
+      return "comment";
+    }
+    else if (ch == "/" && stream.eat("*")) {
+      state.tokenize = tokenComment;
+      return state.tokenize(stream, state);
     }
     else if (operatorChars.test(ch)) {
       stream.eatWhile(operatorChars);
@@ -77,7 +78,7 @@ CodeMirror.defineMode("mysql", function(config) {
         stream.eatWhile(/[\w\d_\-]/);
         return "atom";
       }
-      var word = stream.current(), type;
+      var word = stream.current();
       if (ops.test(word))
         return null;
       else if (keywords.test(word))
@@ -115,6 +116,22 @@ CodeMirror.defineMode("mysql", function(config) {
     };
   }
 
+  function tokenComment(stream, state) {
+    for (;;) {
+      if (stream.skipTo("*")) {
+        stream.next();
+        if (stream.eat("/")) {
+          state.tokenize = tokenBase;
+          break;
+        }
+      } else {
+        stream.skipToEnd();
+        break;
+      }
+    }
+    return "comment";
+  }
+
 
   function pushContext(state, type, col) {
     state.context = {prev: state.context, indent: state.indent, col: col, type: type};
@@ -125,7 +142,7 @@ CodeMirror.defineMode("mysql", function(config) {
   }
 
   return {
-    startState: function(base) {
+    startState: function() {
       return {tokenize: tokenBase,
               context: null,
               indent: 0,

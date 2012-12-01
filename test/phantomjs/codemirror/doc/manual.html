@@ -165,12 +165,6 @@
       indentation (only works if the mode supports indentation).
       Default is true.</dd>
 
-      <dt id="option_autoClearEmptyLines"><code>autoClearEmptyLines (boolean)</code></dt>
-      <dd>When turned on (default is off), this will
-      automatically clear lines consisting only of whitespace when the
-      cursor leaves them. This is mostly useful to prevent auto
-      indentation from introducing trailing whitespace in a file.</dd>
-
       <dt id="option_keyMap"><code>keyMap (string)</code></dt>
       <dd>Configures the keymap to use. The default
       is <code>"default"</code>, which is the only keymap defined
@@ -218,23 +212,9 @@
       simply <code>true</code>), focusing of the editor is also
       disallowed.</dd>
 
-      <dt id="option_cursorBlinkRate"><code>cursorBlinkRate (number)</code></dt>
-      <dd>Half-period in milliseconds used for cursor blinking. The default blink
-      rate is 530ms.</dd>
-
-      <dt id="option_workTime"><code>workTime, workDelay (number)</code></dt>
-      <dd>Highlighting is done by a pseudo background-thread that will
-      work for <code>workTime</code> milliseconds, and then use
-      timeout to sleep for <code>workDelay</code> milliseconds. The
-      defaults are 200 and 300, you can change these options to make
-      the highlighting more or less aggressive.</dd>
-
-      <dt id="option_pollInterval"><code>pollInterval (number)</code></dt>
-      <dd>Indicates how quickly CodeMirror should poll its input
-      textarea for changes (when focused). Most input is captured by
-      events, but some things, like IME input on some browsers, don't
-      generate events that allow CodeMirror to properly detect it.
-      Thus, it polls. Default is 100 milliseconds.</dd>
+      <dt id="option_showCursorWhenSelecting"><code>showCursorWhenSelecting (boolean)</code></dt>
+      <dd>Whether the cursor should be drawn when a selection is
+      active. Defaults to false.</dd>
 
       <dt id="option_undoDepth"><code>undoDepth (integer)</code></dt>
       <dd>The maximum number of undo levels that the editor stores.
@@ -253,7 +233,13 @@
       set to true when either the source textarea is focused, or it
       has an <code>autofocus</code> attribute and no other element is
       focused.</dd>
+    </dl>
 
+    <p>Below this a few more specialized, low-level options are
+    listed. These are only useful in very specific situations, you
+    might want to skip them the first time you read this manual.</p>
+
+    <dl>
       <dt id="option_dragDrop"><code>dragDrop (boolean)</code></dt>
       <dd>Controls whether drag-and-drop is enabled. On by default.</dd>
 
@@ -284,6 +270,50 @@
       its <code>type</code> property and only do something when it
       is <code>keydown</code> (or <code>keypress</code> for actions
       that need character data).</dd>
+
+      <dt id="option_cursorBlinkRate"><code>cursorBlinkRate (number)</code></dt>
+      <dd>Half-period in milliseconds used for cursor blinking. The default blink
+      rate is 530ms.</dd>
+
+      <dt id="option_cursorHeight"><code>cursorHeight (number)</code></dt>
+      <dd>Determines the height of the cursor. Default is 1, meaning
+      it spans the whole height of the line. For some fonts (and by
+      some tastes) a smaller height (for example <code>0.85</code>),
+      which causes the cursor to not reach all the way to the bottom
+      of the line, looks better</dd>
+
+      <dt id="option_workTime"><code>workTime, workDelay (number)</code></dt>
+      <dd>Highlighting is done by a pseudo background-thread that will
+      work for <code>workTime</code> milliseconds, and then use
+      timeout to sleep for <code>workDelay</code> milliseconds. The
+      defaults are 200 and 300, you can change these options to make
+      the highlighting more or less aggressive.</dd>
+
+      <dt id="option_pollInterval"><code>pollInterval (number)</code></dt>
+      <dd>Indicates how quickly CodeMirror should poll its input
+      textarea for changes (when focused). Most input is captured by
+      events, but some things, like IME input on some browsers, don't
+      generate events that allow CodeMirror to properly detect it.
+      Thus, it polls. Default is 100 milliseconds.</dd>
+
+      <dt id="option_flattenSpans"><code>flattenSpans (boolean)</code></dt>
+      <dd>By default, CodeMirror will combine adjacent tokens into a
+      single span if they have the same class. This will result in a
+      simpler DOM tree, and thus perform better. With some kinds of
+      styling (such as rounded corners), this will change the way the
+      document looks. You can set this option to false to disable this
+      behavior.</dd>
+
+      <dt id="option_viewportMargin"><code>viewportMargin (integer)</code></dt>
+      <dd>Specifies the amount of lines that are rendered above and
+      below the part of the document that's currently scrolled into
+      view. This affects the amount of updates needed when scrolling,
+      and the amount of work that such an update does. You should
+      usually leave it at its default, 100. Can be set
+      to <code>Infinity</code> to make sure the whole document is
+      always rendered, and thus the browser's text search works on it.
+      This <em>will</em> have bad effects on performance of big
+      documents.</dd>
     </dl>
 
     <h2 id="events">Events</h2>
@@ -358,16 +388,19 @@
       (but the line is not deleted outright).</dd>
     </dl>
 
-    <p>Folded range handles, as returned
-    by <a href="#foldLines"><code>foldLines</code></a>, emit the
+    <p>Marked range handles, as returned
+    by <a href="#markText"><code>markText</code></a>, emit the
     following event:</p>
 
     <dl>
-      <dt id="event_unfold"><code>"unfold" ()</code></dt>
-      <dd>Fired when the range is unfolded, either through cursor
-      movement or through a call
-      to <a href="#unfoldLines"><code>unfoldLines</code></a>. Will
-      only be fired once per handle.</dd>
+      <dt id="event_clear"><code>"clear" ()</code></dt>
+      <dd>Fired when the range is cleared, either through cursor
+      movement in combination
+      with <a href="#mark_clearOnEnter"><code>clearOnEnter</code></a>
+      or through a call to its <code>clear()</code> method. Will only
+      be fired once per handle. Note that deleting the range through
+      text editing does not fire this event, because an undo
+      action might bring the range back into existence.</dd>
     </dl>
 
     <h2 id="keymaps">Keymaps</h2>
@@ -398,7 +431,7 @@
     also contains the <code>"default"</code> keymap holding the
     default bindings.</p>
 
-    <p>The values of properties in keymaps can be either functions of
+    <p id="commands">The values of properties in keymaps can be either functions of
     a single argument (the CodeMirror instance), strings, or
     <code>false</code>. Such strings refer to properties of the
     <code>CodeMirror.commands</code> object, which defines a number of
@@ -556,16 +589,22 @@
       or the end of the selection must be retrieved. If it is not
       given, the current cursor pos, i.e. the side of the selection
       that would move if you pressed an arrow key, is chosen.
-      A <code>{line, ch}</code> object will be returned.</dd>
+      Alternatively, you can pass one of the
+      strings <code>"start"</code>, <code>"end"</code>, <code>"head"</code>
+      (same as not passing anything), or <code>"anchor"</code> (the
+      opposite). A <code>{line, ch}</code> object will be
+      returned.</dd>
       <dt id="somethingSelected"><code>somethingSelected() → boolean</code></dt>
       <dd>Return true if any text is selected.</dd>
       <dt id="setCursor"><code>setCursor(pos)</code></dt>
       <dd>Set the cursor position. You can either pass a
       single <code>{line, ch}</code> object, or the line and the
       character as two separate parameters.</dd>
-      <dt id="setSelection"><code>setSelection(start, end)</code></dt>
-      <dd>Set the selection range. <code>start</code>
-      and <code>end</code> should be <code>{line, ch}</code> objects.</dd>
+      <dt id="setSelection"><code>setSelection(anchor, head)</code></dt>
+      <dd>Set the selection range. <code>anchor</code>
+      and <code>head</code> should be <code>{line, ch}</code>
+      objects. <code>head</code> defaults to <code>anchor</code> when
+      not givne.</dd>
 
       <dt id="getLine"><code>getLine(n) → string</code></dt>
       <dd>Get the content of line <code>n</code>.</dd>
@@ -593,6 +632,10 @@
       clientHeight}</code> object that represents the current scroll
       position, the size of the scrollable area, and the size of the
       visible area (minus scrollbars).</dd>
+      <dt id="scrollIntoView"><code>scrollIntoView(pos)</code></dt>
+      <dd>Scrolls the given <code>{line, ch}</code> position into
+      view. If no argument is given, this will scroll the cursor into
+      view.</dd>
 
       <dt id="setOption"><code>setOption(option, value)</code></dt>
       <dd>Change the configuration of the editor. <code>option</code>
@@ -607,6 +650,23 @@
       distinct from <code>getOption("mode")</code>, which gives you
       the mode specification, rather than the resolved, instantiated
       <a href="#defineMode">mode object</a>.</dd>
+
+      <dt id="addKeyMap"><code>addKeyMap(map)</code></dt>
+      <dd>Attach an additional <a href="#keymaps">keymap</a> to the editor. This is mostly
+      useful for add-ons that need to register some key handlers
+      without trampling on
+      the <a href="#option_extraKeys"><code>extraKeys</code></a>
+      option. Maps added in this way have a lower precedence
+      than <code>extraKeys</code>, a higher precedence than the
+      base <a href="#option_keyMap"><code>keyMap</code></a>, and
+      between them, the maps added earlier have a higher precedence
+      than those added later.</dd>
+      <dt id="removeKeyMap"><code>removeKeyMap(map)</code></dt>
+      <dd>Disable a keymap added
+      with <a href="#addKeyMap"><code>addKeyMap</code></a>. Either
+      pass in the keymap object itself, or a string, which will be
+      compared against the <code>name</code> property of the active
+      keymaps.</dd>
 
       <dt id="on"><code>on(type, func)</code></dt>
       <dd>Register an event handler for the given event type (a
@@ -640,6 +700,18 @@
       <dd>Given an <code>{left, top}</code> object (in page coordinates),
       returns the <code>{line, ch}</code> position that corresponds to
       it.</dd>
+      <dt id="defaultTextHeight"><code>defaultTextHeight() → number</code></dt>
+      <dd>Returns the line height of the default font for the editor.</dd>
+
+      <dt id="markClean"><code>markClean()</code></dt>
+      <dd>Set the editor content as 'clean', a flag that it will
+      retain until it is edited, and which will be set again when such
+      an edit is undone again. Useful to track whether the content
+      needs to be saved.</dd>
+      <dt id="isClean"><code>isClean() → boolean</code></dt>
+      <dd>Returns whether the document is currently clean (not
+      modified since initialization or the last call
+      to <a href="#markClean"><code>markClean</code></a>).</dd>
 
       <dt id="undo"><code>undo()</code></dt>
       <dd>Undo one edit (if any undo events are stored).</dd>
@@ -662,11 +734,20 @@
       called.</dd>
 
       <dt id="indentLine"><code>indentLine(line, dir)</code></dt>
-      <dd>Reset the given line's indentation to the indentation
-      prescribed by the mode. If the second argument is given,
-      indentation will be increased (if <code>dir</code> is true) or
-      decreased (if false) by an <a href="#option_indentUnit">indent
-      unit</a> instead.</dd>
+      <dd>Adjust the indentation of the given line. The second
+      argument (which defaults to <code>"smart"</code>) may be one of:
+        <dl>
+          <dt><code>"prev"</code></dt>
+          <dd>Base indentation on the indentation of the previous line.</dd>
+          <dt><code>"smart"</code></dt>
+          <dd>Use the mode's smart indentation if available, behave
+          like <code>"prev"</code> otherwise.</dd>
+          <dt><code>"add"</code></dt>
+          <dd>Increase the indentation of the line by
+          one <a href="#option_indentUnit">indent unit</a>.</dd>
+          <dt><code>"subtract"</code></dt>
+          <dd>Reduce the indentation of the line.</dd>
+        </dl></dd>
 
       <dt id="getTokenAt"><code>getTokenAt(pos) → object</code></dt>
       <dd>Retrieves information about the token the current mode found
@@ -676,27 +757,60 @@
         <dt><code>start</code></dt><dd>The character (on the given line) at which the token starts.</dd>
         <dt><code>end</code></dt><dd>The character at which the token ends.</dd>
         <dt><code>string</code></dt><dd>The token's string.</dd>
-        <dt><code>className</code></dt><dd>The class the mode assigned
-        to the token. (Can be null when no class was assigned.)</dd>
+        <dt><code>type</code></dt><dd>The token type the mode assigned
+        to the token, such as <code>"keyword"</code>
+        or <code>"comment"</code> (may also be null).</dd>
         <dt><code>state</code></dt><dd>The mode's state at the end of this token.</dd>
       </dl></dd>
 
-      <dt id="markText"><code>markText(from, to, className, options) → object</code></dt>
+      <dt id="markText"><code>markText(from, to, options) → object</code></dt>
       <dd>Can be used to mark a range of text with a specific CSS
       class name. <code>from</code> and <code>to</code> should
       be <code>{line, ch}</code> objects. The <code>options</code>
       parameter is optional. When given, it should be an object that
       may contain the following configuration options:
       <dl>
-        <dt><code>inclusiveLeft</code></dt><dd>Determines whether
+        <dt id="mark_className"><code>className (string)</code></dt>
+        <dd>Assigns a CSS class to the marked stretch of text.</dd>
+        <dt id="mark_inclusiveLeft"><code>inclusiveLeft (boolean)</code></dt><dd>Determines whether
         text inserted on the left of the marker will end up inside
         or outside of it.</dd>
-        <dt><code>inclusiveRight</code></dt><dd>Like <code>inclusiveLeft</code>,
+        <dt id="mark_inclusiveRight"><code>inclusiveRight</code> (boolean)</dt><dd>Like <code>inclusiveLeft</code>,
         but for the right side.</dd>
-        <dt><code>startStyle</code></dt><dd>Can be used to specify
+        <dt id="mark_atomic"><code>atomic (boolean)</code></dt>
+        <dd>Atomic ranges act as a single unit when cursor movement is
+        concerned—i.e. it is impossible to place the cursor inside of
+        them. In atomic ranges, <code>inclusiveLeft</code>
+        and <code>inclusiveRight</code> have a different meaning—they
+        will prevent the cursor from being placed respectively
+        directly before and directly after the range.</dd>
+        <dt id="mark_collapsed"><code>collapsed (boolean)</code></dt>
+        <dd>Collapsed ranges do not show up in the display. Setting a
+        range to be collapsed will automatically make it atomic.</dd>
+        <dt id="mark_clearOnEnter"><code>clearOnEnter (boolean)</code></dt>
+        <dd>When enabled, will cause the mark to clear itself whenever
+        the cursor enters its range. This is mostly useful for
+        text-replacement widgets that need to 'snap open' when the
+        user tries to edit them. A
+        the <a href="#event_clear"><code>"clear"</code></a> event
+        fired on the range handle can be used to be notified when this
+        happens.</dd>
+        <dt id="mark_replacedWith"><code>replacedWith (dom node)</code></dt>
+        <dd>Use a given node to display this range. Implies both
+        collapsed and atomic.</dd>
+        <dt id="mark_readOnly"><code>readOnly</code></td>
+        <dd>A read-only span can, as long as it is not cleared, not be
+        modified except by
+        calling <a href="#setValue"><code>setValue</code></a> to reset
+        the whole document. <em>Note:</em> adding a read-only span
+        currently clears the undo history of the editor, because
+        existing undo events being partially nullified by read-only
+        spans would corrupt the history (in the current
+        implementation).</dd>
+        <dt id="mark_startStyle"><code>startStyle</code></dt><dd>Can be used to specify
         an extra CSS class to be applied to the leftmost span that
         is part of the marker.</dd>
-        <dt><code>endStyle</code></dt><dd>Equivalent
+        <dt id="mark_endStyle"><code>endStyle</code></dt><dd>Equivalent
         to <code>startStyle</code>, but for the rightmost span.</dd>
       </dl>
       The method will return an object with two methods,
@@ -706,13 +820,16 @@
       the marked range, or <code>undefined</code> if the marker is no
       longer in the document.</dd>
 
-      <dt id="setBookmark"><code>setBookmark(pos) → object</code></dt>
+      <dt id="setBookmark"><code>setBookmark(pos, widget) → object</code></dt>
       <dd>Inserts a bookmark, a handle that follows the text around it
       as it is being edited, at the given position. A bookmark has two
       methods <code>find()</code> and <code>clear()</code>. The first
       returns the current position of the bookmark, if it is still in
-      the document, and the second explicitly removes the
-      bookmark.</dd>
+      the document, and the second explicitly removes the bookmark.
+      The widget argument is optional, and can be used to display a
+      DOM node at the current location of the bookmark (analogous to
+      the <a href="#mark_replacedWith"><code>replacedWith</code></a>
+      option to <code>markText</code>).</dd>
 
       <dt id="findMarksAt"><code>findMarksAt(pos) → array</code></dt>
       <dd>Returns an array of all the bookmarks and marked ranges
@@ -731,39 +848,36 @@
       <dd>Remove all gutter markers in
       the <a href="#option_gutters">gutter</a> with the given ID.</dd>
 
-      <dt id="setLineClass"><code>setLineClass(line, className, backgroundClassName) → lineHandle</code></dt>
+      <dt id="addLineClass"><code>addLineClass(line, where, class) → lineHandle</code></dt>
       <dd>Set a CSS class name for the given line. <code>line</code>
-      can be a number or a line handle. <code>className</code> will be used to style the text
-      for the line, and <code>backgroundClassName</code> to style its
-      background (which lies behind the selection).
-      Pass <code>null</code> to clear the classes for a line.</dd>
+      can be a number or a line handle. <code>where</code> determines
+      to which element this class should be applied, can can be one
+      of <code>"text"</code> (the text element, which lies in front of
+      the selection), <code>"background"</code> (a background element
+      that will be behind the selection), or <code>"wrap"</code> (the
+      wrapper node that wraps all of the line's elements, including
+      gutter elements). <code>class</code> should be the name of the
+      class to apply.</dd>
 
-      <dt id="foldLines"><code>foldLines(from, to, unfoldOnEnter) → foldHandle</code></dt>
-      <dd>Hide the given range of lines (<code>to</code> is
-      non-inclusive). Hidden lines don't show up in the editor.
-      Deleting a region around them does delete them, and copying a
-      region around will include them in the copied text. Vertical
-      cursor movement will skip hidden lines.
-      When <code>unfoldOnEnter</code> is true, horizontal movement
-      into the range will un-hide the range. When it is false,
-      horizonal cursor movement will skip it as if it isn't there. The
-      handle this function returns can be used to unfold the range,
-      and emits an <a href="#event_unfold"><code>unfold</code></a>
-      event when unfolded. Folded ranges may overlap and nest.</dd>
-      <dt id="unfoldLines"><code>unfoldLines(foldHandle)</code></dt>
-      <dd>When given a handle as returned
-      by <a href="#foldLines"><code>foldLines</code></a>, this will
-      unfold that range of lines.</dd>
+      <dt id="removeLineClass"><code>removeLineClass(line, where, class) → lineHandle</code></dt>
+      <dd>Remove a CSS class from a line. <code>line</code> can be a
+      line handle or number. <code>where</code> should be one
+      of <code>"text"</code>, <code>"background"</code>,
+      or <code>"wrap"</code>
+      (see <a href="#addLineClass"><code>addLineClass</code></a>). <code>class</code>
+      can be left off to remove all classes for the specified node, or
+      be a string to remove only a specific class.</dd>
 
       <dt id="lineInfo"><code>lineInfo(line) → object</code></dt>
       <dd>Returns the line number, text content, and marker status of
       the given line, which can be either a number or a line handle.
       The returned object has the structure <code>{line, handle, text,
-      gutterMarkers, lineClass, bgClass, widgets}</code>,
+      gutterMarkers, textClass, bgClass, wrapClass, widgets}</code>,
       where <code>gutterMarkers</code> is an object mapping gutter IDs
       to marker elements, and <code>widgets</code> is an array
       of <a href="#addLineWidget">line widgets</a> attached to this
-      line.</dd>
+      line, and the various class properties refer to classes added
+      with <a href="#addLineClass"><code>addLineClass</code></a>.</dd>
 
       <dt id="getLineHandle"><code>getLineHandle(num) → lineHandle</code></dt>
       <dd>Fetches the line handle for the given line number.</dd>
@@ -806,6 +920,9 @@
           <dt><code>noHScroll (boolean)</code></dt>
           <dd>Whether the widget should stay fixed in the face of
           horizontal scrolling.</dd>
+          <dt><code>above (boolean)</code></dt>
+          <dd>Causes the widget to be placed above instead of below
+          the text of the line.</dd>
         </dl>
       Note that the widget node will become a descendant of nodes with
       CodeMirror-specific CSS classes, and those classes might in some
@@ -841,16 +958,27 @@
       lot faster. The return value from this method will be the return
       value of your function.</dd>
 
-      <dt id="compoundChange"><code>compoundChange(func) → result</code></dt>
-      <dd>Will call the given function (and return its result),
-      combining all changes made while that function executes into a
-      single undo event.</dd>
-
       <dt id="refresh"><code>refresh()</code></dt>
       <dd>If your code does something to change the size of the editor
       element (window resizes are already listened for), or unhides
       it, you should probably follow up by calling this method to
       ensure CodeMirror is still looking as intended.</dd>
+
+      <dt id="extendSelection"><code>extendSelection(pos, pos2)</code></dt>
+      <dd>Similar
+      to <a href="#setSelection"><code>setSelection</code></a>, but
+      will, if shift is held or
+      the <a href="#setExtending">extending</a> flag is set, move the
+      head of the selection while leaving the anchor at its current
+      place. <code>pos2</code> is optional, and can be passed to
+      ensure a region (for example a word or paragraph) will end up
+      selected (in addition to whatever lies between that region and
+      the current anchor).</dd>
+      <dt id="setExtending"><code>setExtending(bool)</code></dt>
+      <dd>Sets or clears the 'extending' flag, which acts similar to
+      the shift key, in that it will cause cursor movement and calls
+      to <a href="#extendSelection"><code>extendSelection</code></a>
+      to leave the selection anchor in place.</dd>
 
       <dt id="getInputField"><code>getInputField() → textarea</code></dt>
       <dd>Returns the hidden textarea used to read input.</dd>
@@ -915,6 +1043,13 @@
     editor instance and the new value when an editor is initialized,
     and whenever the option is modified
     through <a href="#setOption"><code>setOption</code></a>.</p>
+
+    <p id="defineInitHook">If your extention just needs to run some
+    code whenever a CodeMirror instance is initialized,
+    use <code>CodeMirror.defineInitHook</code>. Give it a function as
+    its only argument, and from then on, that function will be called
+    (with the instance as argument) whenever a new CodeMirror instance
+    is initialized.</p>
 
     <h2 id="addons">Add-ons</h2>
 
@@ -982,7 +1117,7 @@
       a CodeMirror instance and a line number, attempt to fold or
       unfold the block starting at the given line. A range-finder is a
       language-specific function that also takes an instance and a
-      line number, and returns an end line for the block, or null if
+      line number, and returns an range to be folded, or null if
       no block is started on that line. This file
       provides <code>CodeMirror.braceRangeFinder</code>, which finds
       blocks in brace languages (JavaScript, C, Java,
@@ -1066,6 +1201,11 @@
       which will ensure the given mode is loaded and cause the given
       editor instance to refresh its mode when the loading
       succeeded. See the <a href="../demo/loadmode.html">demo</a>.</dd>
+      <dt id="util_continuecomment"><a href="../lib/util/continuecomment.js"><code>continuecomment.js</code></a></dt>
+      <dd>Adds a <a href="#commands">command</a>
+      called <code>newlineAndIndentContinueComment</code> that you can
+      bind <code>Enter</code> to in order to have the editor prefix
+      new lines inside C-like block comments with an asterisk.</dd>
     </dl>
 
     <h2 id="modeapi">Writing CodeMirror Modes</h2>
@@ -1207,7 +1347,7 @@
     state.</p>
 
     <p id="indent">If you want your mode to provide smart indentation
-    (though the <a href="#indentLine"><code>indentLine</code></a>
+    (through the <a href="#indentLine"><code>indentLine</code></a>
     method and the <code>indentAuto</code>
     and <code>newlineAndIndent</code> commands, which keys can be
     <a href="#option_extraKeys">bound</a> to), you must define

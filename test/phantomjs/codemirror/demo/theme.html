@@ -18,6 +18,8 @@
     <link rel="stylesheet" href="../theme/ambiance.css">
     <link rel="stylesheet" href="../theme/blackboard.css">
     <link rel="stylesheet" href="../theme/vibrant-ink.css">
+    <link rel="stylesheet" href="../theme/solarized.css">
+    <link rel="stylesheet" href="../theme/twilight.css">
     <script src="../mode/javascript/javascript.js"></script>
     <link rel="stylesheet" href="../doc/docs.css">
 
@@ -55,6 +57,9 @@ function findSequence(goal) {
     <option>neat</option>
     <option>night</option>
     <option>rubyblue</option>
+    <option>solarized dark</option>
+    <option>solarized light</option>
+    <option>twilight</option>
     <option>vibrant-ink</option>
     <option>xq-dark</option>
 </select>
@@ -69,7 +74,8 @@ function findSequence(goal) {
     var theme = input.options[input.selectedIndex].innerHTML;
     editor.setOption("theme", theme);
   }
-  var choice = document.location.search && document.location.search.slice(1);
+  var choice = document.location.search &&
+               decodeURIComponent(document.location.search.slice(1));
   if (choice) {
     input.value = choice;
     editor.setOption("theme", choice);

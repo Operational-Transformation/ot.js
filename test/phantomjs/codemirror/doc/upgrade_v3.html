@@ -25,6 +25,10 @@ CodeMirror in a very simple way might be able to upgrade without
 trouble. But it does introduce a number of incompatibilities. Please
 at least skim this text before upgrading.</p>
 
+<p>Note that <strong>version 3 drops full support for Internet
+Explorer 7</strong>. The editor will mostly work on that browser, but
+it'll be significantly glitchy.</p>
+
 <h2 id=dom>DOM structure</h2>
 
 <p>This one is the most likely to cause problems. The internal
@@ -74,17 +78,29 @@ full list here</a>.</p>
 which act more as hooks than as event handlers, are still there in
 their old form.)</p>
 
+<h2 id=marktext>markText method arguments</h2>
+
+<p>The <a href="manual.html#markText"><code>markText</code></a> method
+(which has gained some interesting new features, such as creating
+atomic and read-only spans, or replacing spans with widgets) no longer
+takes the CSS class name as a separate argument, but makes it an
+optional field in the options object instead.</p>
+
 <h2 id=folding>Line folding</h2>
 
-<p>The interface for folding lines has been overhauled to deal with
-regions of lines rather than individual lines, and to allow
-auto-expansion when the cursor enters the folded region.
-See <a href="manual.html#foldLines"><code>foldLines</code></a>
-and <a href="manual.html#unfoldLines"><code>unfoldLines</code></a> for
-the new API.</p>
+<p>The interface for hiding lines has been
+removed. <a href="manual.html#markText"><code>markText</code></a> can
+now be used to do the same in a more flexible and powerful way.</p>
 
 <p>The <a href="../demo/folding.html">folding script</a> has been
 updated to use the new interface, and should now be more robust.</p>
+
+<h2 id=lineclass>Line CSS classes</h2>
+
+<p>The <code>setLineClass</code> method has been replaced
+by <a href="manual.html#addLineClass"><code>addLineClass</code></a>
+and <a href="manual.html#removeLineClass"><code>removeLineClass</code></a>,
+which allow more modular control over the classes attached to a line.</p>
 
 <h2 id=positions>Position properties</h2>
 
@@ -122,7 +138,7 @@ strings to mode specs).</p>
   <li>Arbitrary line heights. Using fonts with different heights
   inside the editor (whether off by one pixel or fifty) is now
   supported and handled gracefully.</li>
-  <li>In-line widgets. See <a href="../demo/widgets.html">the demo</a>
+  <li>In-line widgets. See <a href="../demo/widget.html">the demo</a>
   and <a href="manual.html#addLineWidget">the docs</a>.</li>
   <li>Defining custom options
   with <a href="manual.html#defineOption"><code>CodeMirror.defineOption</code></a>.</li>
@@ -137,6 +153,8 @@ strings to mode specs).</p>
   <li><a href="#gutters">Gutter model</a></li>
   <li><a href="#events">Event handling</a></li>
   <li><a href="#folding">Line folding</a></li>
+  <li><a href="#marktext">markText method arguments</a></li>
+  <li><a href="#lineclass">Line CSS classes</a></li>
   <li><a href="#positions">Position properties</a></li>
   <li><a href="#matchbrackets">Bracket matching</a></li>
   <li><a href="#modes">Mode management</a></li>
