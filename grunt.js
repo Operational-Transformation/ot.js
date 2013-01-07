@@ -11,7 +11,7 @@ module.exports = function(grunt) {
         ' *   /  \\ <%= pkg.name %> <%= pkg.version %>',
         ' *  /    \\ <%= pkg.homepage || \'\' %>',
         ' *  \\    /',
-        ' *   \\  / (c) <%= grunt.template.today("yyyy") %> <%= pkg.author %>',
+        ' *   \\  / (c) 2012-<%= grunt.template.today("yyyy") %> <%= pkg.author %>',
         ' *    \\/ <%= pkg.name %> may be freely distributed under the MIT license.',
         ' */'
       ].join('\n')
