@@ -1,4 +1,4 @@
-// CodeMirror version 3.0rc2
+// CodeMirror version 3.0
 //
 // CodeMirror is the only global var we claim
 window.CodeMirror = (function() {
@@ -23,6 +23,8 @@ window.CodeMirror = (function() {
   var phantom = /PhantomJS/.test(navigator.userAgent);
 
   var ios = /AppleWebKit/.test(navigator.userAgent) && /Mobile\/\w+/.test(navigator.userAgent);
+  // This is woefully incomplete. Suggestions for alternative methods welcome.
+  var mobile = ios || /Android|webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent);
   var mac = ios || /Mac/.test(navigator.platform);
 
   // Optimize some code when these features are not used
@@ -42,7 +44,7 @@ window.CodeMirror = (function() {
     var display = this.display = makeDisplay(place);
     display.wrapper.CodeMirror = this;
     updateGutters(this);
-    if (options.autofocus) focusInput(this);
+    if (options.autofocus && !mobile) focusInput(this);
 
     this.view = makeView(new BranchChunk([new LeafChunk([makeLine("", null, textHeight(display))])]));
     this.nextOpId = 0;
@@ -62,7 +64,7 @@ window.CodeMirror = (function() {
     // IE throws unspecified error in certain cases, when
     // trying to access activeElement before onload
     var hasFocus; try { hasFocus = (document.activeElement == display.input); } catch(e) { }
-    if (hasFocus || options.autofocus) setTimeout(bind(onFocus, this), 20);
+    if (hasFocus || (options.autofocus && !mobile)) setTimeout(bind(onFocus, this), 20);
     else onBlur(this);
 
     operation(this, function() {
@@ -216,8 +218,8 @@ window.CodeMirror = (function() {
       });
     }
     regChange(cm, 0, doc.size);
-    clearMeasureLineCache(cm);
-    setTimeout(bind(updateScrollbars, cm.display), 100);
+    clearCaches(cm);
+    setTimeout(function(){updateScrollbars(cm.display, cm.view.doc.height);}, 100);
   }
 
   function keyMapChanged(cm) {
@@ -229,6 +231,7 @@ window.CodeMirror = (function() {
   function themeChanged(cm) {
     cm.display.wrapper.className = cm.display.wrapper.className.replace(/\s*cm-s-\S+/g, "") +
       cm.options.theme.replace(/(^|\s)\s*/g, " cm-s-");
+    clearCaches(cm);
   }
 
   function guttersChanged(cm) {
@@ -754,6 +757,7 @@ window.CodeMirror = (function() {
     var on = true;
     display.cursor.style.visibility = display.otherCursor.style.visibility = "";
     display.blinker = setInterval(function() {
+      if (!display.cursor.offsetHeight) return;
       display.cursor.style.visibility = display.otherCursor.style.visibility = (on = !on) ? "" : "hidden";
     }, cm.options.cursorBlinkRate);
   }
@@ -883,7 +887,7 @@ window.CodeMirror = (function() {
     // doesn't work when wrapping is on, but in that case the
     // situation is slightly better, since IE does cache line-wrapping
     // information and only recomputes per-line.
-    if (ie && !cm.options.lineWrapping && pre.childNodes.length > 100) {
+    if (ie && !ie_lt8 && !cm.options.lineWrapping && pre.childNodes.length > 100) {
       var fragment = document.createDocumentFragment();
       var chunk = 10, n = pre.childNodes.length;
       for (var i = 0, chunks = Math.ceil(n / chunk); i < chunks; ++i) {
@@ -925,8 +929,10 @@ window.CodeMirror = (function() {
     return data;
   }
 
-  function clearMeasureLineCache(cm) {
+  function clearCaches(cm) {
     cm.display.measureLineCache.length = cm.display.measureLineCachePos = 0;
+    cm.display.cachedCharWidth = cm.display.cachedTextHeight = null;
+    cm.view.maxLineChanged = true;
   }
 
   // Context is one of "line", "div" (display.lineDiv), "local"/null (editor), or "page"
@@ -1261,7 +1267,7 @@ window.CodeMirror = (function() {
     on(window, "resize", function resizeHandler() {
       // Might be a text scaling operation, clear size caches.
       d.cachedCharWidth = d.cachedTextHeight = null;
-      clearMeasureLineCache(cm);
+      clearCaches(cm);
       if (d.wrapper.parentNode) updateDisplay(cm, true);
       else off(window, "resize", resizeHandler);
     });
@@ -1400,14 +1406,19 @@ window.CodeMirror = (function() {
       return;
     }
     e_preventDefault(e);
-    if (type == "single") extendSelection(cm, start);
+    if (type == "single") extendSelection(cm, clipPos(doc, start));
 
     var startstart = sel.from, startend = sel.to;
 
     function doSelect(cur) {
       if (type == "single") {
-        extendSelection(cm, start, cur);
-      } else if (type == "double") {
+        extendSelection(cm, clipPos(doc, start), cur);
+        return;
+      }
+
+      startstart = clipPos(doc, startstart);
+      startend = clipPos(doc, startend);
+      if (type == "double") {
         var word = findWordAt(getLine(doc, cur.line).text, cur);
         if (posLess(cur, startstart)) extendSelection(cm, word.from, startend);
         else extendSelection(cm, startstart, word.to);
@@ -1539,7 +1550,8 @@ window.CodeMirror = (function() {
     e.dataTransfer.setData("Text", txt);
 
     // Use dummy image instead of default browsers image.
-    if (e.dataTransfer.setDragImage)
+    // Recent Safari (~6.0.2) have a tendency to segfault when this happens, so we don't do it there.
+    if (e.dataTransfer.setDragImage && !safari)
       e.dataTransfer.setDragImage(elt('img'), 0, 0);
   }
 
@@ -2126,8 +2138,8 @@ window.CodeMirror = (function() {
   // SCROLLING
 
   function scrollCursorIntoView(cm) {
-    var view = cm.view, coords = cursorCoords(cm, view.sel.head);
-    scrollIntoView(cm, coords.left, coords.top, coords.left, coords.bottom);
+    var view = cm.view;
+    var coords = scrollPosIntoView(cm, view.sel.head);
     if (!view.focused) return;
     var display = cm.display, box = display.sizer.getBoundingClientRect(), doScroll = null;
     if (coords.top + box.top < 0) doScroll = true;
@@ -2141,6 +2153,23 @@ window.CodeMirror = (function() {
       }
       display.cursor.scrollIntoView(doScroll);
       if (hidden) display.cursor.style.display = "none";
+    }
+  }
+
+  function scrollPosIntoView(cm, pos) {
+    for (;;) {
+      var changed = false, coords = cursorCoords(cm, pos);
+      var scrollPos = calculateScrollPos(cm, coords.left, coords.top, coords.left, coords.bottom);
+      var startTop = cm.view.scrollTop, startLeft = cm.view.scrollLeft;
+      if (scrollPos.scrollTop != null) {
+        setScrollTop(cm, scrollPos.scrollTop);
+        if (Math.abs(cm.view.scrollTop - startTop) > 1) changed = true;
+      }
+      if (scrollPos.scrollLeft != null) {
+        setScrollLeft(cm, scrollPos.scrollLeft);
+        if (Math.abs(cm.view.scrollLeft - startLeft) > 1) changed = true;
+      }
+      if (!changed) return coords;
     }
   }
 
@@ -2705,9 +2734,9 @@ window.CodeMirror = (function() {
     },
 
     scrollIntoView: function(pos) {
+      if (typeof pos == "number") pos = {line: pos, ch: 0};
       pos = pos ? clipPos(this.view.doc, pos) : this.view.sel.head;
-      var coords = cursorCoords(this, pos);
-      scrollIntoView(this, coords.left, coords.top, coords.left, coords.bottom);
+      scrollPosIntoView(this, pos);
     },
 
     setSize: function(width, height) {
@@ -2725,7 +2754,7 @@ window.CodeMirror = (function() {
     operation: function(f){return operation(this, f)();},
 
     refresh: function() {
-      clearMeasureLineCache(this);
+      clearCaches(this);
       if (this.display.scroller.scrollHeight > this.view.scrollTop)
         this.display.scrollbarV.scrollTop = this.display.scroller.scrollTop = this.view.scrollTop;
       updateDisplay(this, true);
@@ -2762,13 +2791,12 @@ window.CodeMirror = (function() {
   option("smartIndent", true);
   option("tabSize", 4, function(cm) {
     loadMode(cm);
-    clearMeasureLineCache(cm);
+    clearCaches(cm);
     updateDisplay(cm, true);
   }, true);
   option("electricChars", true);
 
   option("theme", "default", function(cm) {
-    clearMeasureLineCache(cm);
     themeChanged(cm);
     guttersChanged(cm);
   }, true);
@@ -3077,13 +3105,13 @@ window.CodeMirror = (function() {
     if (textarea.form) {
       // Deplorable hack to make the submit method do the right thing.
       on(textarea.form, "submit", save);
-      var realSubmit = textarea.form.submit;
+      var form = textarea.form, realSubmit = form.submit;
       try {
-        textarea.form.submit = function wrappedSubmit() {
+        form.submit = function wrappedSubmit() {
           save();
-          textarea.form.submit = realSubmit;
-          textarea.form.submit();
-          textarea.form.submit = wrappedSubmit;
+          form.submit = realSubmit;
+          form.submit();
+          form.submit = wrappedSubmit;
         };
       } catch(e) {}
     }
@@ -4519,7 +4547,7 @@ window.CodeMirror = (function() {
 
   // THE END
 
-  CodeMirror.version = "3.0 rc2";
+  CodeMirror.version = "3.0";
 
   return CodeMirror;
 })();
