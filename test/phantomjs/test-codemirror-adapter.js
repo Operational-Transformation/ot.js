@@ -122,6 +122,18 @@
     ok(cm.redo === redoFn);
   });
 
+  test("detach", function () {
+    var cm = CodeMirror(document.body, {});
+    var cmAdapter = new CodeMirrorAdapter(cm);
+    var changes = 0;
+    cmAdapter.registerCallbacks({ change: function () { changes += 1; } });
+    cm.setValue("42");
+    ok(changes === 1);
+    cmAdapter.detach();
+    cm.setValue("23");
+    ok(changes === 1);
+  });
+
   // TODO:
   // * trigger 'cursorActivity' (and ordering with 'change' event)
   // * setCursor
