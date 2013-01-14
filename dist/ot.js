@@ -3,7 +3,7 @@
  *   /  \ ot 0.0.10
  *  /    \ http://operational-transformation.github.com
  *  \    /
- *   \  / (c) 2012 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
+ *   \  / (c) 2012-2013 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
  *    \/ ot may be freely distributed under the MIT license.
  */
 
@@ -398,9 +398,6 @@ ot.TextOperation = (function () {
       throw new Error("Both operations have to have the same base length");
     }
 
-    // Use the IDs of the two input operations. This enables clients to
-    // recognize their own operations when they receive operations from the
-    // server.
     var operation1prime = new TextOperation();
     var operation2prime = new TextOperation();
     var ops1 = operation1.ops, ops2 = operation2.ops;
@@ -595,7 +592,7 @@ ot.WrappedOperation = (function (global) {
   // A WrappedOperation contains an operation and corresponing metadata.
   function WrappedOperation (operation, meta) {
     this.wrapped = operation;
-    this.meta    = meta || {};
+    this.meta    = meta;
   }
 
   WrappedOperation.prototype.apply = function () {
@@ -606,7 +603,7 @@ ot.WrappedOperation = (function (global) {
     var meta = this.meta;
     return new WrappedOperation(
       this.wrapped.invert.apply(this.wrapped, arguments),
-      typeof meta === 'object' && typeof meta.invert === 'function' ?
+      meta && typeof meta === 'object' && typeof meta.invert === 'function' ?
         meta.invert.apply(meta, arguments) : meta
     );
   };
@@ -621,7 +618,7 @@ ot.WrappedOperation = (function (global) {
   }
 
   function composeMeta (a, b) {
-    if (typeof a === 'object') {
+    if (a && typeof a === 'object') {
       if (typeof a.compose === 'function') { return a.compose(b); }
       var meta = {};
       copy(a, meta);
@@ -639,7 +636,7 @@ ot.WrappedOperation = (function (global) {
   };
 
   function transformMeta (meta, operation) {
-    if (typeof meta === 'object') {
+    if (meta && typeof meta === 'object') {
       if (typeof meta.transform === 'function') {
         return meta.transform(operation);
       }
@@ -947,13 +944,26 @@ ot.CodeMirrorAdapter = (function () {
 
   function CodeMirrorAdapter (cm) {
     this.cm = cm;
-    this.silent = false;
+    this.ignoreNextChange = false;
     this.oldValue = this.cm.getValue();
 
-    var self = this;
-    cm.on('change', function (_, change) { self.onChange(change); });
-    cm.on('cursorActivity', function () { self.trigger('cursorActivity'); });
+    bind(this, 'onChange');
+    bind(this, 'onCursorActivity');
+    bind(this, 'onFocus');
+    bind(this, 'onBlur');
+    cm.on('change', this.onChange);
+    cm.on('cursorActivity', this.onCursorActivity);
+    cm.on('focus', this.onFocus);
+    cm.on('blur', this.onBlur);
   }
+
+  // Removes all event listeners from the CodeMirror instance.
+  CodeMirrorAdapter.prototype.detach = function () {
+    this.cm.off('change', this.onChange);
+    this.cm.off('cursorActivity', this.onCursorActivity);
+    this.cm.off('focus', this.onFocus);
+    this.cm.off('blur', this.onBlur);
+  };
 
   // The oldValue is needed to find
   CodeMirrorAdapter.operationFromCodeMirrorChange = function (change, oldValue) {
@@ -1075,12 +1085,22 @@ ot.CodeMirrorAdapter = (function () {
     this.callbacks = cb;
   };
 
-  CodeMirrorAdapter.prototype.onChange = function (change) {
-    if (!this.silent) {
+  CodeMirrorAdapter.prototype.onChange = function (_, change) {
+    if (!this.ignoreNextChange) {
       var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.oldValue);
       this.trigger('change', this.oldValue, operation);
     }
+    this.ignoreNextChange = false;
     this.oldValue = this.cm.getValue();
+  };
+
+  CodeMirrorAdapter.prototype.onCursorActivity =
+  CodeMirrorAdapter.prototype.onFocus = function () {
+    this.trigger('cursorActivity');
+  };
+
+  CodeMirrorAdapter.prototype.onBlur = function () {
+    if (!this.cm.somethingSelected()) { this.trigger('blur'); }
   };
 
   CodeMirrorAdapter.prototype.getValue = function () {
@@ -1114,19 +1134,14 @@ ot.CodeMirrorAdapter = (function () {
 
   var addStyleRule = (function () {
     var added = {};
+    var styleElement = document.createElement('style');
+    document.documentElement.getElementsByTagName('head')[0].appendChild(styleElement);
+    var styleSheet = styleElement.sheet;
 
     return function (css) {
       if (added[css]) { return; }
       added[css] = true;
-
-      try {
-        var styleSheet = document.styleSheets.item(0),
-            insertionPoint = (styleSheet.rules? styleSheet.rules:
-                styleSheet.cssRules).length;
-        styleSheet.insertRule(css, insertionPoint);
-      } catch (exc) {
-        console.error("Couldn't add style rule.", exc);
-      }
+      styleSheet.insertRule(css, (styleSheet.cssRules || styleSheet.rules).length);
     };
   }());
 
@@ -1178,9 +1193,8 @@ ot.CodeMirrorAdapter = (function () {
   };
 
   CodeMirrorAdapter.prototype.applyOperation = function (operation) {
-    this.silent = true;
+    this.ignoreNextChange = true;
     CodeMirrorAdapter.applyOperationToCodeMirror(operation, this.cm);
-    this.silent = false;
   };
 
   CodeMirrorAdapter.prototype.registerUndo = function (undoFn) {
@@ -1198,9 +1212,20 @@ ot.CodeMirrorAdapter = (function () {
     }
   }
 
+  // Bind a method to an object, so it doesn't matter whether you call
+  // object.method() directly or pass object.method as a reference to another
+  // function.
+  function bind (obj, method) {
+    var fn = obj[method];
+    obj[method] = function () {
+      fn.apply(obj, arguments);
+    };
+  }
+
   return CodeMirrorAdapter;
 
 }());
+
 /*global ot */
 
 ot.SocketIOAdapter = (function () {
@@ -1282,11 +1307,17 @@ ot.EditorClient = (function () {
   }
 
   OtherMeta.fromJSON = function (obj) {
-    return new OtherMeta(obj.clientId, Cursor.fromJSON(obj.cursor));
+    return new OtherMeta(
+      obj.clientId,
+      obj.cursor && Cursor.fromJSON(obj.cursor)
+    );
   };
 
   OtherMeta.prototype.transform = function (operation) {
-    return new OtherMeta(this.clientId, this.cursor.transform(operation));
+    return new OtherMeta(
+      this.clientId,
+      this.cursor && this.cursor.transform(operation)
+    );
   };
 
 
@@ -1302,8 +1333,8 @@ ot.EditorClient = (function () {
       this.listEl.appendChild(this.li);
     }
 
-    if (cursor) { this.updateCursor(cursor); }
     this.setColor(name ? hueFromName(name) : Math.random());
+    if (cursor) { this.updateCursor(cursor); }
   }
 
   OtherClient.prototype.setColor = function (hue) {
@@ -1325,8 +1356,8 @@ ot.EditorClient = (function () {
   };
 
   OtherClient.prototype.updateCursor = function (cursor) {
+    this.removeCursor();
     this.cursor = cursor;
-    if (this.mark) { this.mark.clear(); }
     this.mark = this.editorAdapter.setOtherCursor(
       cursor,
       cursor.position === cursor.selectionEnd ? this.color : this.lightColor
@@ -1335,6 +1366,10 @@ ot.EditorClient = (function () {
 
   OtherClient.prototype.remove = function () {
     if (this.li) { removeElement(this.li); }
+    this.removeCursor();
+  };
+
+  OtherClient.prototype.removeCursor = function () {
     if (this.mark) { this.mark.clear(); }
   };
 
@@ -1352,7 +1387,8 @@ ot.EditorClient = (function () {
 
     this.editorAdapter.registerCallbacks({
       change: function (oldValue, operation) { self.onChange(oldValue, operation); },
-      cursorActivity: function () { self.onCursorActivity(); }
+      cursorActivity: function () { self.onCursorActivity(); },
+      blur: function () { self.onBlur(); }
     });
     this.editorAdapter.registerUndo(function () { self.undo(); });
     this.editorAdapter.registerRedo(function () { self.redo(); });
@@ -1368,7 +1404,11 @@ ot.EditorClient = (function () {
         ));
       },
       cursor: function (clientId, cursor) {
-        self.getClientObject(clientId).updateCursor(Cursor.fromJSON(cursor));
+        if (cursor) {
+          self.getClientObject(clientId).updateCursor(Cursor.fromJSON(cursor));
+        } else {
+          self.getClientObject(clientId).removeCursor();
+        }
       }
     });
   }
@@ -1424,11 +1464,13 @@ ot.EditorClient = (function () {
 
   EditorClient.prototype.undo = function () {
     var self = this;
+    if (!this.undoManager.canUndo()) { return; }
     this.undoManager.performUndo(function (o) { self.applyUnredo(o); });
   };
 
   EditorClient.prototype.redo = function () {
     var self = this;
+    if (!this.undoManager.canRedo()) { return; }
     this.undoManager.performRedo(function (o) { self.applyUnredo(o); });
   };
 
@@ -1454,12 +1496,19 @@ ot.EditorClient = (function () {
     var oldCursor = this.cursor;
     this.updateCursor();
     if (oldCursor && this.cursor.equals(oldCursor)) { return; }
+    this.sendCursor(this.cursor);
+  };
 
+  EditorClient.prototype.onBlur = function () {
+    this.cursor = null;
+    this.sendCursor(null);
+  };
+
+  EditorClient.prototype.sendCursor = function (cursor) {
     if (this.state instanceof Client.AwaitingWithBuffer) {
-      this.state.buffer.meta.cursorAfter = this.cursor;
+      this.state.buffer.meta.cursorAfter = cursor;
     } else {
-      var self = this;
-      this.serverAdapter.sendCursor(this.cursor);
+      this.serverAdapter.sendCursor(cursor);
     }
   };
 
