@@ -1163,7 +1163,7 @@ ot.CodeMirrorAdapter = (function () {
     };
   }());
 
-  CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color) {
+  CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color, clientId) {
     var cursorPos = this.cm.posFromIndex(cursor.position);
     if (cursor.position === cursor.selectionEnd) {
       // show cursor
@@ -1175,6 +1175,7 @@ ot.CodeMirrorAdapter = (function () {
       cursorEl.innerHTML = '&nbsp;';
       cursorEl.style.borderLeftColor = color;
       cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.85 + 'px';
+      cursorEl.setAttribute('data-clientid', clientId);
       this.cm.addWidget(cursorPos, cursorEl, false);
       return {
         clear: function () {
@@ -1381,7 +1382,8 @@ ot.EditorClient = (function () {
     this.cursor = cursor;
     this.mark = this.editorAdapter.setOtherCursor(
       cursor,
-      cursor.position === cursor.selectionEnd ? this.color : this.lightColor
+      cursor.position === cursor.selectionEnd ? this.color : this.lightColor,
+      this.id
     );
   };
 
