@@ -805,6 +805,12 @@ ot.Client = (function (global) {
     this.revision++;
     this.setState(this.state.serverAck(this));
   };
+  
+  Client.prototype.serverReconnect = function () {
+    if(this.state.resend){
+      this.state.resend(this);
+    }
+  };
 
   // Override this method.
   Client.prototype.sendOperation = function (revision, operation) {
@@ -880,6 +886,12 @@ ot.Client = (function (global) {
     return synchronized;
   };
 
+  AwaitingConfirm.prototype.resend = function (client) {
+    //the confirm didn't come because the client was disconnected.
+    //now that it has reconnected we resend outstanding operation
+    client.sendOperation(client.revision, this.outstanding);
+  };
+
 
   // In the 'AwaitingWithBuffer' state, the client is waiting for an operation
   // to be acknowledged by the server while buffering the edits the user makes
@@ -926,6 +938,12 @@ ot.Client = (function (global) {
     // => send buffer
     client.sendOperation(client.revision, this.buffer);
     return new AwaitingConfirm(this.buffer);
+  };
+
+  AwaitingWithBuffer.prototype.resend = function (client) {
+    //the confirm didn't come because the client was disconnected.
+    //now that it has reconnected we resend outstanding operation
+    client.sendOperation(client.revision, this.outstanding);
   };
 
 
@@ -1145,7 +1163,7 @@ ot.CodeMirrorAdapter = (function () {
     };
   }());
 
-  CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color) {
+  CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color, clientId) {
     var cursorPos = this.cm.posFromIndex(cursor.position);
     if (cursor.position === cursor.selectionEnd) {
       // show cursor
@@ -1157,6 +1175,7 @@ ot.CodeMirrorAdapter = (function () {
       cursorEl.innerHTML = '&nbsp;';
       cursorEl.style.borderLeftColor = color;
       cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.85 + 'px';
+      cursorEl.setAttribute('data-clientid', clientId);
       this.cm.addWidget(cursorPos, cursorEl, false);
       return {
         clear: function () {
@@ -1245,6 +1264,9 @@ ot.SocketIOAdapter = (function () {
       .on('operation', function (obj) { self.trigger('operation', obj); })
       .on('cursor', function (obj) {
         self.trigger('cursor', obj.clientId, obj.cursor);
+      })
+      .on('reconnect', function(){ 
+        self.trigger('reconnect'); 
       });
   }
 
@@ -1360,7 +1382,8 @@ ot.EditorClient = (function () {
     this.cursor = cursor;
     this.mark = this.editorAdapter.setOtherCursor(
       cursor,
-      cursor.position === cursor.selectionEnd ? this.color : this.lightColor
+      cursor.position === cursor.selectionEnd ? this.color : this.lightColor,
+      this.id
     );
   };
 
@@ -1409,6 +1432,9 @@ ot.EditorClient = (function () {
         } else {
           self.getClientObject(clientId).removeCursor();
         }
+      },
+      reconnect: function(){
+        self.serverReconnect();
       }
     });
   }
