@@ -90,5 +90,19 @@ exports.testClient = function (test) {
   test.ok(client.state instanceof Client.Synchronized);
   test.strictEqual(doc, "lorem Ipsum Dolor Sit");
 
+  //Test AwaitingConfirm and AwaitingWithBuffer resend operation.
+  client.applyClient(new TextOperation().retain(21).insert("a"));
+  test.ok(client.state instanceof Client.AwaitingConfirm);
+  test.ok(!!client.state.resend);
+  client.applyClient(new TextOperation().retain(22).insert("m"));
+  test.ok(client.state instanceof Client.AwaitingWithBuffer);
+  test.ok(!!client.state.resend);
+
+  client.state.resend(client);
+  test.ok(sentOperation.equals(new TextOperation().retain(21).insert('a')));
+  client.serverAck();
+  test.ok(sentOperation.equals(new TextOperation().retain(22).insert('m')));
+
+
   test.done();
 };
