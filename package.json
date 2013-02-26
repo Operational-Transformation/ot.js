@@ -18,10 +18,17 @@
   "dependencies": {},
   "devDependencies": {
     "socket.io": "0.9.13",
-    "grunt": "*"
+    "grunt": "*",
+    "grunt-contrib-jshint": "*",
+    "grunt-contrib-qunit": "*",
+    "grunt-contrib-nodeunit": "*",
+    "grunt-contrib-watch": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-concat": "*",
+    "grunt-contrib-connect": "*"
   },
   "scripts": {
-    "test": "grunt lint test qunit"
+    "test": "grunt jshint nodeunit qunit"
   },
   "licenses": [
     {
