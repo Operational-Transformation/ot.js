@@ -807,9 +807,17 @@ ot.Client = (function (global) {
   };
   
   Client.prototype.serverReconnect = function () {
-    if(this.state.resend){
-      this.state.resend(this);
-    }
+    if (typeof this.state.resend === 'function') { this.state.resend(this); }
+  };
+
+  // Transforms a cursor position from the latest known server state to the
+  // current client state. For example, if we get from the server the
+  // information that another user's cursor is at position 3, but the server
+  // hasn't yet received our newest operation, an insertion of 5 characters at
+  // the beginning of the document, the correct position of the other user's
+  // cursor in our current document is 8.
+  Client.prototype.transformCursor = function (cursor) {
+    return this.state.transformCursor(cursor);
   };
 
   // Override this method.
@@ -845,6 +853,9 @@ ot.Client = (function (global) {
   Synchronized.prototype.serverAck = function (client) {
     throw new Error("There is no pending operation.");
   };
+
+  // Nothing to do because the latest server state and client state are the same.
+  Synchronized.prototype.transformCursor = function (cursor) { return cursor; };
 
   // Singleton
   var synchronized = new Synchronized();
@@ -886,9 +897,13 @@ ot.Client = (function (global) {
     return synchronized;
   };
 
+  AwaitingConfirm.prototype.transformCursor = function (cursor) {
+    return cursor.transform(this.outstanding);
+  };
+
   AwaitingConfirm.prototype.resend = function (client) {
-    //the confirm didn't come because the client was disconnected.
-    //now that it has reconnected we resend outstanding operation
+    // The confirm didn't come because the client was disconnected.
+    // Now that it has reconnected, we resend the outstanding operation.
     client.sendOperation(client.revision, this.outstanding);
   };
 
@@ -940,9 +955,13 @@ ot.Client = (function (global) {
     return new AwaitingConfirm(this.buffer);
   };
 
+  AwaitingConfirm.prototype.transformCursor = function (cursor) {
+    return cursor.transform(this.outstanding).transform(this.buffer);
+  };
+
   AwaitingWithBuffer.prototype.resend = function (client) {
-    //the confirm didn't come because the client was disconnected.
-    //now that it has reconnected we resend outstanding operation
+    // The confirm didn't come because the client was disconnected.
+    // Now that it has reconnected, we resend the outstanding operation.
     client.sendOperation(client.revision, this.outstanding);
   };
 
@@ -1174,7 +1193,8 @@ ot.CodeMirrorAdapter = (function () {
       cursorEl.style.borderLeftStyle = 'solid';
       cursorEl.innerHTML = '&nbsp;';
       cursorEl.style.borderLeftColor = color;
-      cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.85 + 'px';
+      cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
+      cursorEl.style.marginTop = (cursorCoords.top - cursorCoords.bottom) + 'px';
       cursorEl.setAttribute('data-clientid', clientId);
       this.cm.addWidget(cursorPos, cursorEl, false);
       return {
@@ -1254,29 +1274,31 @@ ot.SocketIOAdapter = (function () {
 
     var self = this;
     socket
-      .on('client_left', function (obj) {
-        self.trigger('client_left', obj.clientId);
+      .on('client_left', function (clientId) {
+        self.trigger('client_left', clientId);
       })
-      .on('set_name', function (obj) {
-        self.trigger('set_name', obj.clientId, obj.name);
+      .on('set_name', function (clientId, name) {
+        self.trigger('set_name', clientId, name);
       })
       .on('ack', function () { self.trigger('ack'); })
-      .on('operation', function (obj) { self.trigger('operation', obj); })
-      .on('cursor', function (obj) {
-        self.trigger('cursor', obj.clientId, obj.cursor);
+      .on('operation', function (clientId, operation, cursor) {
+        self.trigger('operation', operation);
+        self.trigger('cursor', clientId, cursor);
       })
-      .on('reconnect', function(){ 
-        self.trigger('reconnect'); 
+      .on('cursor', function (clientId, cursor) {
+        self.trigger('cursor', clientId, cursor);
+      })
+      .on('reconnect', function () {
+        self.trigger('reconnect');
       });
   }
 
-  SocketIOAdapter.prototype.sendOperation = function (revision, obj) {
-    obj.revision = revision;
-    this.socket.emit('operation', obj);
+  SocketIOAdapter.prototype.sendOperation = function (revision, operation, cursor) {
+    this.socket.emit('operation', revision, operation, cursor);
   };
 
-  SocketIOAdapter.prototype.sendCursor = function (obj) {
-    this.socket.emit('cursor', obj);
+  SocketIOAdapter.prototype.sendCursor = function (cursor) {
+    this.socket.emit('cursor', cursor);
   };
 
   SocketIOAdapter.prototype.registerCallbacks = function (cb) {
@@ -1292,6 +1314,145 @@ ot.SocketIOAdapter = (function () {
   return SocketIOAdapter;
 
 }());
+/*global ot, $ */
+
+ot.AjaxAdapter = (function () {
+
+  function AjaxAdapter (path, revision) {
+    if (path[path.length - 1] !== '/') { path += '/'; }
+    this.path = path;
+    this.revision = revision;
+    this.poll();
+  }
+
+  AjaxAdapter.prototype.poll = function () {
+    var self = this;
+    this.xhr = $.ajax({
+      url: this.path + 'revision/' + this.revision,
+      type: 'GET',
+      dataType: 'json',
+      success: function (data) {
+        var operations = data.operations;
+        for (var i = 0; i < operations.length; i++) {
+          self.trigger('operation', operations[i]);
+        }
+        self.revision += operations.length;
+        self.poll();
+      },
+      error: function (xhr, reason) {
+        if (reason !== 'abort') {
+          setTimeout(function () { self.poll(); }, 500);
+        }
+      }
+    });
+  };
+
+  AjaxAdapter.prototype.sendOperation = function (revision, operation, cursor) {
+    if (this.xhr) { this.xhr.abort(); }
+    if (revision !== this.revision) { throw new Error("Revision numbers out of sync"); }
+    var self = this;
+    this.xhr = $.ajax({
+      url: this.path + 'revision/' + revision,
+      type: 'POST',
+      data: JSON.stringify({ operation: operation, cursor: cursor }),
+      contentType: 'application/json',
+      processData: false,
+      success: function (data) {
+        var operations = data.operations;
+        for (var i = 0; i < operations.length - 1; i++) {
+          self.trigger('operation', operations[i]);
+        }
+        self.revision += operations.length;
+        self.trigger('ack');
+        self.poll();
+      },
+      error: function (xhr, status) {
+        //if (reason !== '_cancelled') {}
+        setTimeout(function () { self.sendOperation(revision, operation, cursor); }, 500);
+      }
+    });
+  };
+
+  AjaxAdapter.prototype.sendCursor = function (obj) {
+    $.ajax({
+      url: this.path + 'cursor',
+      type: 'POST',
+      data: JSON.stringify(obj),
+      contentType: 'application/json',
+      processData: false,
+      timeout: 1000
+    });
+  };
+
+  AjaxAdapter.prototype.registerCallbacks = function (cb) {
+    this.callbacks = cb;
+  };
+
+  AjaxAdapter.prototype.trigger = function (event) {
+    var args = Array.prototype.slice.call(arguments, 1);
+    var action = this.callbacks && this.callbacks[event];
+    if (action) { action.apply(this, args); }
+  };
+
+  return AjaxAdapter;
+
+})();
+
+/*
+class NeopreneAdapter
+  constructor: (@renderUrl, @revision) ->
+    _.bindAll(@)
+    @operationToSend = null
+    @listen()
+
+  ajax: (options) ->
+    @xhr?.abort()
+    dfltOptions =
+      url: @renderUrl(@revision)
+      accept: 'json'
+      dataType: 'json'
+    @xhr = $.ajax _.extend dfltOptions, options
+
+  listen: ->
+    @ajax
+      type: 'GET'
+      success: (data) =>
+        @parseOperations(data)
+        @listen()
+      error: (jqXhr, reason) =>
+        return if reason is 'abort'
+        @retry @listen
+
+  retry: (fn) -> setTimeout fn, 500
+
+  sendOperation: (revision, obj) ->
+    if @revision != revision
+      throw new Error("Revision numbers out of sync.")
+    @ajax
+      type: 'POST'
+      contentType: 'application/json'
+      data: JSON.stringify(obj.operation)
+      success: (operations) =>
+        @parseOperations(_.initial(operations))
+        @revision += 1
+        @trigger 'ack'
+        @listen()
+      error: (jqXhr, reason) =>
+        @retry =>
+          @sendOperation(revision, obj)
+
+  parseOperations: (operations) ->
+    @revision += operations.length
+
+    for operation in operations
+      @trigger 'operation',
+        meta:
+          clientId: 'lorem'
+          cursor:
+            position: 0
+            selectionEnd: 0
+        operation: operation
+*/
 /*global ot */
 
 ot.EditorClient = (function () {
@@ -1420,22 +1581,19 @@ ot.EditorClient = (function () {
       client_left: function (clientId) { self.onClientLeft(clientId); },
       set_name: function (clientId, name) { self.getClientObject(clientId).setName(name); },
       ack: function () { self.serverAck(); },
-      operation: function (obj) {
-        self.applyServer(new WrappedOperation(
-          TextOperation.fromJSON(obj.operation),
-          OtherMeta.fromJSON(obj.meta)
-        ));
+      operation: function (operation) {
+        self.applyServer(TextOperation.fromJSON(operation));
       },
       cursor: function (clientId, cursor) {
         if (cursor) {
-          self.getClientObject(clientId).updateCursor(Cursor.fromJSON(cursor));
+          self.getClientObject(clientId).updateCursor(
+            self.transformCursor(Cursor.fromJSON(cursor))
+          );
         } else {
           self.getClientObject(clientId).removeCursor();
         }
       },
-      reconnect: function(){
-        self.serverReconnect();
-      }
+      reconnect: function () { self.serverReconnect(); }
     });
   }
 
@@ -1511,7 +1669,7 @@ ot.EditorClient = (function () {
         .invert(oldValue)
         .shouldBeComposedWith(textOperation);
     this.undoManager.add(operation.invert(oldValue), compose);
-    this.applyClient(operation);
+    this.applyClient(textOperation);
   };
 
   EditorClient.prototype.updateCursor = function () {
@@ -1531,26 +1689,18 @@ ot.EditorClient = (function () {
   };
 
   EditorClient.prototype.sendCursor = function (cursor) {
-    if (this.state instanceof Client.AwaitingWithBuffer) {
-      this.state.buffer.meta.cursorAfter = cursor;
-    } else {
-      this.serverAdapter.sendCursor(cursor);
-    }
+    if (this.state instanceof Client.AwaitingWithBuffer) { return; }
+    this.serverAdapter.sendCursor(cursor);
   };
 
   EditorClient.prototype.sendOperation = function (revision, operation) {
-    this.serverAdapter.sendOperation(revision, {
-      meta: { cursor: operation.meta.cursorAfter },
-      operation: operation.wrapped.toJSON()
-    });
+    this.serverAdapter.sendOperation(revision, operation.toJSON(), this.cursor);
   };
 
   EditorClient.prototype.applyOperation = function (operation) {
-    this.editorAdapter.applyOperation(operation.wrapped);
+    this.editorAdapter.applyOperation(operation);
     this.updateCursor();
-    var client = this.getClientObject(operation.meta.clientId);
-    client.updateCursor(operation.meta.cursor);
-    this.undoManager.transform(operation);
+    this.undoManager.transform(new WrappedOperation(operation, null));
   };
 
   function rgb2hex (r, g, b) {
