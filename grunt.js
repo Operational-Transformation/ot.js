@@ -40,6 +40,7 @@ module.exports = function(grunt) {
           'lib/client.js',
           'lib/codemirror-adapter.js',
           'lib/socketio-adapter.js',
+          'lib/ajax-adapter.js',
           'lib/editor-client.js'
         ],
         dest: 'dist/ot.js'
