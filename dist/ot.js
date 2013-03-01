@@ -955,7 +955,7 @@ ot.Client = (function (global) {
     return new AwaitingConfirm(this.buffer);
   };
 
-  AwaitingConfirm.prototype.transformCursor = function (cursor) {
+  AwaitingWithBuffer.prototype.transformCursor = function (cursor) {
     return cursor.transform(this.outstanding).transform(this.buffer);
   };
 
@@ -973,6 +973,7 @@ ot.Client = (function (global) {
 if (typeof module === 'object') {
   module.exports = ot.Client;
 }
+
 /*global ot */
 
 ot.CodeMirrorAdapter = (function () {
