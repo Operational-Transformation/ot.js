@@ -30,6 +30,7 @@ function checkFile(fileName) {
       locations: true,
       ecmaVersion: 3,
       strictSemicolons: true,
+      allowTrailingCommas: false,
       forbidReserved: true,
       sourceFile: fileName
     });
@@ -71,6 +72,9 @@ function checkFile(fileName) {
           cur.vars[node.name].used = true;
           return;
         }
+    },
+    FunctionExpression: function(node) {
+      if (node.id) fail("Named function expression", node.loc);
     }
   }, scopePasser);
 

@@ -5,15 +5,17 @@
     <title>CodeMirror: Match Highlighter Demo</title>
     <link rel="stylesheet" href="../lib/codemirror.css">
     <script src="../lib/codemirror.js"></script>
-    <script src="../lib/util/searchcursor.js"></script>
-    <script src="../lib/util/match-highlighter.js"></script>
+    <script src="../addon/search/searchcursor.js"></script>
+    <script src="../addon/search/match-highlighter.js"></script>
     <link rel="stylesheet" href="../doc/docs.css">
 
     <style type="text/css">
       .CodeMirror {border-top: 1px solid black; border-bottom: 1px solid black;}
-	  
-      span.CodeMirror-matchhighlight { background: #e9e9e9 }
-      .CodeMirror-focused span.CodeMirror-matchhighlight { background: #e7e4ff; !important }
+      .CodeMirror-focused .cm-matchhighlight {
+        background-image: url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFklEQVQI12NgYGBgkKzc8x9CMDAwAAAmhwSbidEoSQAAAABJRU5ErkJggg==);
+        background-position: bottom;
+        background-repeat: repeat-x;
+      }
     </style>
   </head>
   <body>
@@ -24,13 +26,13 @@
 Give it a try!  No more hardToSpotVars.</textarea></form>
 
     <script>
-var editor = CodeMirror.fromTextArea(document.getElementById("code"), {lineNumbers : true});
-editor.on("cursorActivity", function() {
-  editor.matchHighlight("CodeMirror-matchhighlight");
+var editor = CodeMirror.fromTextArea(document.getElementById("code"), {
+  lineNumbers: true,
+  highlightSelectionMatches: true
 });
 </script>
 
-    <p>Highlight matches of selected text on select</p>
+    <p>Search and highlight occurences of the selected text.</p>
 
   </body>
 </html>

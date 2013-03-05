@@ -7,9 +7,24 @@
 // Ctrl-G.
 
 (function() {
+  function searchOverlay(query) {
+    if (typeof query == "string") return {token: function(stream) {
+      if (stream.match(query)) return "searching";
+      stream.next();
+      stream.skipTo(query.charAt(0)) || stream.skipToEnd();
+    }};
+    return {token: function(stream) {
+      if (stream.match(query)) return "searching";
+      while (!stream.eol()) {
+        stream.next();
+        if (stream.match(query, false)) break;
+      }
+    }};
+  }
+
   function SearchState() {
     this.posFrom = this.posTo = this.query = null;
-    this.marked = [];
+    this.overlay = null;
   }
   function getSearchState(cm) {
     return cm._searchState || (cm._searchState = new SearchState());
@@ -39,11 +54,9 @@
       cm.operation(function() {
         if (!query || state.query) return;
         state.query = parseQuery(query);
-        if (cm.lineCount() < 2000) { // This is too expensive on big documents.
-          for (var cursor = getSearchCursor(cm, state.query); cursor.findNext();)
-            state.marked.push(cm.markText(cursor.from(), cursor.to(),
-                                          {className: "CodeMirror-searching"}));
-        }
+        cm.removeOverlay(state.overlay);
+        state.overlay = searchOverlay(query);
+        cm.addOverlay(state.overlay);
         state.posFrom = state.posTo = cm.getCursor();
         findNext(cm, rev);
       });
@@ -53,7 +66,7 @@
     var state = getSearchState(cm);
     var cursor = getSearchCursor(cm, state.query, rev ? state.posFrom : state.posTo);
     if (!cursor.find(rev)) {
-      cursor = getSearchCursor(cm, state.query, rev ? {line: cm.lineCount() - 1} : {line: 0, ch: 0});
+      cursor = getSearchCursor(cm, state.query, rev ? CodeMirror.Pos(cm.lastLine()) : CodeMirror.Pos(cm.firstLine(), 0));
       if (!cursor.find(rev)) return;
     }
     cm.setSelection(cursor.from(), cursor.to());
@@ -63,8 +76,7 @@
     var state = getSearchState(cm);
     if (!state.query) return;
     state.query = null;
-    for (var i = 0; i < state.marked.length; ++i) state.marked[i].clear();
-    state.marked.length = 0;
+    cm.removeOverlay(state.overlay);
   });}
 
   var replaceQueryDialog =
@@ -88,7 +100,7 @@
         } else {
           clearSearch(cm);
           var cursor = getSearchCursor(cm, query, cm.getCursor());
-          function advance() {
+          var advance = function() {
             var start = cursor.from(), match;
             if (!(match = cursor.findNext())) {
               cursor = getSearchCursor(cm, query);
@@ -98,12 +110,12 @@
             cm.setSelection(cursor.from(), cursor.to());
             confirmDialog(cm, doReplaceConfirm, "Replace?",
                           [function() {doReplace(match);}, advance]);
-          }
-          function doReplace(match) {
+          };
+          var doReplace = function(match) {
             cursor.replace(typeof query == "string" ? text :
                            text.replace(/\$(\d)/, function(_, i) {return match[i];}));
             advance();
-          }
+          };
           advance();
         }
       });

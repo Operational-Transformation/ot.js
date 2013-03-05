@@ -13,10 +13,11 @@ if (typeof ot === 'undefined') {
 }
 
 ot.TextOperation = (function () {
+  'use strict';
 
   // Constructor for new operations.
   function TextOperation () {
-    if (this.constructor !== TextOperation) {
+    if (!this || this.constructor !== TextOperation) {
       // => function was called without 'new'
       return new TextOperation();
     }
@@ -521,6 +522,7 @@ if (typeof ot === 'undefined') {
 }
 
 ot.Cursor = (function (global) {
+  'use strict';
 
   var TextOperation = global.ot ? global.ot.TextOperation : require('./text-operation');
 
@@ -588,6 +590,7 @@ if (typeof ot === 'undefined') {
 }
 
 ot.WrappedOperation = (function (global) {
+  'use strict';
 
   // A WrappedOperation contains an operation and corresponing metadata.
   function WrappedOperation (operation, meta) {
@@ -667,6 +670,7 @@ if (typeof ot === 'undefined') {
 }
 
 ot.UndoManager = (function () {
+  'use strict';
 
   var NORMAL_STATE = 'normal';
   var UNDOING_STATE = 'undoing';
@@ -779,11 +783,12 @@ if (typeof ot === 'undefined') {
 }
 
 ot.Client = (function (global) {
+  'use strict';
 
   // Client constructor
   function Client (revision) {
     this.revision = revision; // the next expected revision number
-    this.state = synchronized; // start state
+    this.state = synchronized_; // start state
   }
 
   Client.prototype.setState = function (state) {
@@ -858,7 +863,7 @@ ot.Client = (function (global) {
   Synchronized.prototype.transformCursor = function (cursor) { return cursor; };
 
   // Singleton
-  var synchronized = new Synchronized();
+  var synchronized_ = new Synchronized();
 
 
   // In the 'AwaitingConfirm' state, there's one operation the client has sent
@@ -894,7 +899,7 @@ ot.Client = (function (global) {
   AwaitingConfirm.prototype.serverAck = function (client) {
     // The client's operation has been acknowledged
     // => switch to synchronized state
-    return synchronized;
+    return synchronized_;
   };
 
   AwaitingConfirm.prototype.transformCursor = function (cursor) {
@@ -977,18 +982,25 @@ if (typeof module === 'object') {
 /*global ot */
 
 ot.CodeMirrorAdapter = (function () {
+  'use strict';
+
   var TextOperation = ot.TextOperation;
   var Cursor = ot.Cursor;
 
   function CodeMirrorAdapter (cm) {
     this.cm = cm;
     this.ignoreNextChange = false;
+    this.changeRanges = [];
+    this.docLength = this.cm.indexFromPos({ line: this.cm.lastLine(), ch: 0 }) +
+      this.cm.getLine(this.cm.lastLine()).length;
     this.oldValue = this.cm.getValue();
 
+    bind(this, 'onBeforeChange');
     bind(this, 'onChange');
     bind(this, 'onCursorActivity');
     bind(this, 'onFocus');
     bind(this, 'onBlur');
+    cm.on('beforeChange', this.onBeforeChange);
     cm.on('change', this.onChange);
     cm.on('cursorActivity', this.onCursorActivity);
     cm.on('focus', this.onFocus);
@@ -997,103 +1009,63 @@ ot.CodeMirrorAdapter = (function () {
 
   // Removes all event listeners from the CodeMirror instance.
   CodeMirrorAdapter.prototype.detach = function () {
+    this.cm.off('beforeChange', this.onBeforeChange);
     this.cm.off('change', this.onChange);
     this.cm.off('cursorActivity', this.onCursorActivity);
     this.cm.off('focus', this.onFocus);
     this.cm.off('blur', this.onBlur);
   };
 
-  // The oldValue is needed to find
-  CodeMirrorAdapter.operationFromCodeMirrorChange = function (change, oldValue) {
-    var operation = new TextOperation();
-    // Holds the current value
-    var lines = oldValue.split('\n');
+  function eqPos (a, b) { return a.line === b.line && a.ch === b.ch; }
 
-    // Given a { line, ch } object, return the index into the string represented
-    // by the current lines object.
-    function indexFromPos (pos) {
-      var line = pos.line, ch = pos.ch;
-      var index = 0;
-      for (var i = 0; i < pos.line; i++) {
-        index += lines[i].length + 1;
+  // Converts a CodeMirror change object into a TextOperation and its inverse
+  // and returns them as a two-element array. Apart from the CodeMirror change
+  // object, it requires several other pieces of information:
+  //
+  // * `doc`: the CodeMirror document (a standalone document or simply the CodeMirror
+  //   instance)
+  // * `docStartLength`: the length of the document in characters before the change.
+  // * `changeRanges`: an array of `{ from, to, fromIndex, replacedText }` objects that contain
+  //   the same from and to position objects in the same order as the linked
+  //   list in the change object. `fromIndex` is the zero-based position in
+  //   the pre-change document corresponding to `from`. `replacedText` contains
+  //   the text that got deleted by the change.
+  CodeMirrorAdapter.operationFromCodeMirrorChange = function (change, doc, docStartLength, changeRanges) {
+    var docLength = docStartLength;
+    var operation = new TextOperation().retain(docLength);
+    var inverse   = new TextOperation().retain(docLength);
+
+    var i = 0;
+    while (change) {
+      var changeRange = changeRanges[i];
+      if (!changeRange || !eqPos(changeRange.from, change.from) || !eqPos(changeRange.to, change.to)) {
+        throw new Error("Not enough information in 'changeRanges' array.");
       }
-      index += ch;
-      return index;
-    }
+      var text = change.text.join('\n');
+      var replacedText = changeRange.replacedText;
+      var restLength = docLength - changeRange.fromIndex - replacedText.length;
 
-    // The number of characters in the current lines array + number of newlines.
-    function getLength () {
-      var length = 0;
-      for (var i = 0, l = lines.length; i < l; i++) {
-        length += lines[i].length;
-      }
-      return length + lines.length - 1; // include '\n's
-    }
+      operation = operation.compose(new TextOperation()
+        .retain(changeRange.fromIndex)
+        ['delete'](replacedText.length)
+        .insert(text)
+        .retain(restLength)
+      );
 
-    // Returns the substring of the current lines array in the range given by
-    // 'from' and 'to' which must be { line, ch } objects
-    function getRange (from, to) {
-      // Precondition: to ">" from
-      if (from.line === to.line) {
-        return lines[from.line].slice(from.ch, to.ch);
-      }
-      var str = lines[from.line].slice(from.ch) + '\n';
-      for (var i = from.line + 1; i < to.line; i++) {
-        str += lines[i] + '\n';
-      }
-      str += lines[to.line].slice(0, to.ch);
-      return str;
-    }
+      inverse = new TextOperation()
+        .retain(changeRange.fromIndex)
+        ['delete'](text.length)
+        .insert(replacedText)
+        .retain(restLength)
+        .compose(inverse);
 
-    // Replace the range defined by 'from' and 'to' by 'text' (array of lines).
-    // Alters the lines array.
-    function replaceRange (text, from, to) {
-      // Precondition: to ">" from
-      var strLines = text.slice(0); // copy
-      var pre = lines[from.line].slice(0, from.ch);
-      var post = lines[to.line].slice(to.ch);
-      strLines[0] = pre + strLines[0];
-      strLines[strLines.length-1] += post;
+      docLength += -replacedText.length + text.length;
 
-      strLines.unshift(to.line - from.line + 1); // 2nd positional parameter
-      strLines.unshift(from.line); // 1st positional parameter
-      lines.splice.apply(lines, strLines);
-    }
-
-    // Convert a single CodeMirror change to an operation. Assumes that lines
-    // represents the state of the document before the CodeMirror change took
-    // place. Alters the lines array so that it represents the document's
-    // content after the change.
-    function generateOperation (operation, change) {
-      var from   = indexFromPos(change.from);
-      var to     = indexFromPos(change.to);
-      var length = getLength();
-      operation.retain(from);
-      operation['delete'](getRange(change.from, change.to));
-      operation.insert(change.text.join('\n'));
-      operation.retain(length - to);
-      replaceRange(change.text, change.from, change.to);
-    }
-
-    // Convert the first element of the linked list of changes to an operation.
-    generateOperation(operation, change);
-    //oldValue = operation.apply(oldValue);
-    //assert(oldValue === lines.join('\n'));
-
-    // handle lists of operations by doing a left-fold over the linked list,
-    // convert each change to an operation and composing it.
-    while (true) {
-      //assert(operation.targetLength === getLength());
       change = change.next;
-      if (!change) { break; }
-      var nextOperation = new TextOperation(operation.revision + 1);
-      generateOperation(nextOperation, change);
-      //oldValue = nextOperation.apply(oldValue);
-      //assert(oldValue === lines.join('\n'));
-      operation = operation.compose(nextOperation);
+      i++;
     }
 
-    return operation;
+    return [operation, inverse];
   };
 
   // Apply an operation to a CodeMirror instance.
@@ -1114,8 +1086,6 @@ ot.CodeMirrorAdapter = (function () {
           cm.replaceRange('', from, to);
         }
       }
-      // Check that the operation spans the whole content
-      assert(index === cm.getValue().length);
     });
   };
 
@@ -1123,13 +1093,37 @@ ot.CodeMirrorAdapter = (function () {
     this.callbacks = cb;
   };
 
+  // Returns a `changeRange` object (as described in the documentation for the
+  // `operationFromCodeMirrorChange` method) from a change object returned by
+  // the `'beforeChange'` event. Must be called directly from the event handler.
+  // Note that the objects obtained from the `beforeChange` events are only in
+  // one-to-one correspondents with the elements of the linked list of change
+  // objects if the document doesn't contain read-only ranges!
+  CodeMirrorAdapter.getChangeRange = function (doc, change) {
+    return {
+      from: change.from,
+      fromIndex: doc.indexFromPos(change.from),
+      to: change.to,
+      replacedText: doc.getRange(change.from, change.to)
+    };
+  };
+
+  CodeMirrorAdapter.prototype.onBeforeChange = function (_, change) {
+    this.changeRanges.push(CodeMirrorAdapter.getChangeRange(this.cm, change));
+  };
+
   CodeMirrorAdapter.prototype.onChange = function (_, change) {
     if (!this.ignoreNextChange) {
-      var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.oldValue);
-      this.trigger('change', this.oldValue, operation);
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(
+        change, this.cm,
+        this.docLength, this.changeRanges
+      );
+      this.trigger('change', pair[0], pair[1]);
     }
     this.ignoreNextChange = false;
-    this.oldValue = this.cm.getValue();
+    this.changeRanges = [];
+    this.docLength = this.cm.indexFromPos({ line: this.cm.lastLine(), ch: 0 }) +
+      this.cm.getLine(this.cm.lastLine()).length;
   };
 
   CodeMirrorAdapter.prototype.onCursorActivity =
@@ -1142,12 +1136,10 @@ ot.CodeMirrorAdapter = (function () {
   };
 
   CodeMirrorAdapter.prototype.getValue = function () {
-    return this.oldValue;
+    return this.cm.getValue();
   };
 
   CodeMirrorAdapter.prototype.getCursor = function () {
-    function eqPos (a, b) { return a.line === b.line && a.ch === b.ch; }
-
     var cm = this.cm;
     var cursorPos = cm.getCursor();
     var position = cm.indexFromPos(cursorPos);
@@ -1269,6 +1261,7 @@ ot.CodeMirrorAdapter = (function () {
 /*global ot */
 
 ot.SocketIOAdapter = (function () {
+  'use strict';
 
   function SocketIOAdapter (socket) {
     this.socket = socket;
@@ -1318,57 +1311,90 @@ ot.SocketIOAdapter = (function () {
 /*global ot, $ */
 
 ot.AjaxAdapter = (function () {
+  'use strict';
 
-  function AjaxAdapter (path, revision) {
+  function AjaxAdapter (path, ownUserName, revision) {
     if (path[path.length - 1] !== '/') { path += '/'; }
     this.path = path;
-    this.revision = revision;
+    this.ownUserName = ownUserName;
+    this.majorRevision = revision.major || 0;
+    this.minorRevision = revision.minor || 0;
     this.poll();
   }
 
+  AjaxAdapter.prototype.renderRevisionPath = function () {
+    return 'revision/' + this.majorRevision + '-' + this.minorRevision;
+  };
+
+  AjaxAdapter.prototype.handleResponse = function (data) {
+    var i;
+    var operations = data.operations;
+    for (i = 0; i < operations.length; i++) {
+      if (operations[i].user === this.ownUserName) {
+        this.trigger('ack');
+      } else {
+        this.trigger('operation', operations[i].operation);
+      }
+    }
+    if (operations.length > 0) {
+      this.majorRevision += operations.length;
+      this.minorRevision = 0;
+    }
+
+    var events = data.events;
+    if (events) {
+      for (i = 0; i < events.length; i++) {
+        var user = events[i].user;
+        if (user === this.ownUserName) { continue; }
+        switch (events[i].event) {
+          case 'joined': this.trigger('set_name', user, user); break;
+          case 'left':   this.trigger('client_left', user); break;
+          case 'cursor': this.trigger('cursor', user, events[i].cursor); break;
+        }
+      }
+      this.minorRevision += events.length;
+    }
+
+    var users = data.users;
+    if (users) {
+      delete users[this.ownUserName];
+      this.trigger('clients', users);
+    }
+
+    if (data.revision) {
+      this.majorRevision = data.revision.major;
+      this.minorRevision = data.revision.minor;
+    }
+  };
+
   AjaxAdapter.prototype.poll = function () {
     var self = this;
-    this.xhr = $.ajax({
-      url: this.path + 'revision/' + this.revision,
+    $.ajax({
+      url: this.path + this.renderRevisionPath(),
       type: 'GET',
       dataType: 'json',
+      timeout: 5000,
       success: function (data) {
-        var operations = data.operations;
-        for (var i = 0; i < operations.length; i++) {
-          self.trigger('operation', operations[i]);
-        }
-        self.revision += operations.length;
+        self.handleResponse(data);
         self.poll();
       },
-      error: function (xhr, reason) {
-        if (reason !== 'abort') {
-          setTimeout(function () { self.poll(); }, 500);
-        }
+      error: function () {
+        setTimeout(function () { self.poll(); }, 500);
       }
     });
   };
 
   AjaxAdapter.prototype.sendOperation = function (revision, operation, cursor) {
-    if (this.xhr) { this.xhr.abort(); }
-    if (revision !== this.revision) { throw new Error("Revision numbers out of sync"); }
+    if (revision !== this.majorRevision) { throw new Error("Revision numbers out of sync"); }
     var self = this;
-    this.xhr = $.ajax({
-      url: this.path + 'revision/' + revision,
+    $.ajax({
+      url: this.path + this.renderRevisionPath(),
       type: 'POST',
       data: JSON.stringify({ operation: operation, cursor: cursor }),
       contentType: 'application/json',
       processData: false,
-      success: function (data) {
-        var operations = data.operations;
-        for (var i = 0; i < operations.length - 1; i++) {
-          self.trigger('operation', operations[i]);
-        }
-        self.revision += operations.length;
-        self.trigger('ack');
-        self.poll();
-      },
-      error: function (xhr, status) {
-        //if (reason !== '_cancelled') {}
+      success: function (data) {},
+      error: function () {
         setTimeout(function () { self.sendOperation(revision, operation, cursor); }, 500);
       }
     });
@@ -1376,7 +1402,7 @@ ot.AjaxAdapter = (function () {
 
   AjaxAdapter.prototype.sendCursor = function (obj) {
     $.ajax({
-      url: this.path + 'cursor',
+      url: this.path + this.renderRevisionPath() + '/cursor',
       type: 'POST',
       data: JSON.stringify(obj),
       contentType: 'application/json',
@@ -1398,65 +1424,11 @@ ot.AjaxAdapter = (function () {
   return AjaxAdapter;
 
 })();
-
-/*
-class NeopreneAdapter
-  constructor: (@renderUrl, @revision) ->
-    _.bindAll(@)
-    @operationToSend = null
-    @listen()
-
-  ajax: (options) ->
-    @xhr?.abort()
-    dfltOptions =
-      url: @renderUrl(@revision)
-      accept: 'json'
-      dataType: 'json'
-    @xhr = $.ajax _.extend dfltOptions, options
-
-  listen: ->
-    @ajax
-      type: 'GET'
-      success: (data) =>
-        @parseOperations(data)
-        @listen()
-      error: (jqXhr, reason) =>
-        return if reason is 'abort'
-        @retry @listen
-
-  retry: (fn) -> setTimeout fn, 500
-
-  sendOperation: (revision, obj) ->
-    if @revision != revision
-      throw new Error("Revision numbers out of sync.")
-    @ajax
-      type: 'POST'
-      contentType: 'application/json'
-      data: JSON.stringify(obj.operation)
-      success: (operations) =>
-        @parseOperations(_.initial(operations))
-        @revision += 1
-        @trigger 'ack'
-        @listen()
-      error: (jqXhr, reason) =>
-        @retry =>
-          @sendOperation(revision, obj)
-
-  parseOperations: (operations) ->
-    @revision += operations.length
-
-    for operation in operations
-      @trigger 'operation',
-        meta:
-          clientId: 'lorem'
-          cursor:
-            position: 0
-            selectionEnd: 0
-        operation: operation
-*/
 /*global ot */
 
 ot.EditorClient = (function () {
+  'use strict';
+
   var Client = ot.Client;
   var Cursor = ot.Cursor;
   var UndoManager = ot.UndoManager;
@@ -1564,6 +1536,7 @@ ot.EditorClient = (function () {
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
     this.undoManager = new UndoManager();
+    this.lastOperation = null;
 
     this.initializeClientList();
     this.initializeClients(clients);
@@ -1571,7 +1544,7 @@ ot.EditorClient = (function () {
     var self = this;
 
     this.editorAdapter.registerCallbacks({
-      change: function (oldValue, operation) { self.onChange(oldValue, operation); },
+      change: function (operation, inverse) { self.onChange(operation, inverse); },
       cursorActivity: function () { self.onCursorActivity(); },
       blur: function () { self.onBlur(); }
     });
@@ -1594,25 +1567,50 @@ ot.EditorClient = (function () {
           self.getClientObject(clientId).removeCursor();
         }
       },
+      clients: function (clients) {
+        var clientId;
+        for (clientId in self.clients) {
+          if (self.clients.hasOwnProperty(clientId) && !clients.hasOwnProperty(clientId)) {
+            self.onClientLeft(clientId);
+          }
+        }
+
+        for (clientId in clients) {
+          if (clients.hasOwnProperty(clientId)) {
+            if (self.clients.hasOwnProperty(clientId)) {
+              var cursor = clients[clientId];
+              if (cursor) {
+                self.clients[clientId].updateCursor(
+                  self.transformCursor(Cursor.fromJSON(cursor))
+                );
+              } else {
+                self.clients[clientId].removeCursor();
+              }
+            }
+          }
+        }
+      },
       reconnect: function () { self.serverReconnect(); }
     });
   }
 
   inherit(EditorClient, Client);
 
+  EditorClient.prototype.addClient = function (clientId, clientObj) {
+    this.clients[clientId] = new OtherClient(
+      clientId,
+      this.clientListEl,
+      this.editorAdapter,
+      clientObj.name || clientId,
+      clientObj.cursor ? Cursor.fromJSON(clientObj.cursor) : null
+    );
+  };
+
   EditorClient.prototype.initializeClients = function (clients) {
     this.clients = {};
     for (var clientId in clients) {
       if (clients.hasOwnProperty(clientId)) {
-        var client = clients[clientId];
-        client.clientId = clientId;
-        this.clients[clientId] = new OtherClient(
-          client.clientId,
-          this.clientListEl,
-          this.editorAdapter,
-          client.name,
-          client.cursor ? Cursor.fromJSON(client.cursor) : null
-        );
+        this.addClient(clientId, clients[clientId]);
       }
     }
   };
@@ -1644,7 +1642,7 @@ ot.EditorClient = (function () {
     this.editorAdapter.applyOperation(operation.wrapped);
     this.cursor = operation.meta.cursorAfter;
     this.editorAdapter.setCursor(this.cursor);
-    this.applyClient(operation);
+    this.applyClient(operation.wrapped);
   };
 
   EditorClient.prototype.undo = function () {
@@ -1659,17 +1657,22 @@ ot.EditorClient = (function () {
     this.undoManager.performRedo(function (o) { self.applyUnredo(o); });
   };
 
-  EditorClient.prototype.onChange = function (oldValue, textOperation) {
+  EditorClient.prototype.onChange = function (textOperation, inverse) {
     var cursorBefore = this.cursor;
     this.updateCursor();
     var meta = new SelfMeta(cursorBefore, this.cursor);
     var operation = new WrappedOperation(textOperation, meta);
-    var compose = this.undoManager.undoStack.length > 0 &&
-      !this.undoManager.dontCompose &&
-      last(this.undoManager.undoStack).wrapped
-        .invert(oldValue)
-        .shouldBeComposedWith(textOperation);
-    this.undoManager.add(operation.invert(oldValue), compose);
+
+    var compose;
+    if (!this.undoManager.dontCompose && this.lastOperation && this.lastOperation.shouldBeComposedWith(textOperation)) {
+      compose = true;
+      this.lastOperation = this.lastOperation.compose(textOperation);
+    } else {
+      compose = false;
+      this.lastOperation = textOperation;
+    }
+    var inverseMeta = new SelfMeta(this.cursor, cursorBefore);
+    this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
     this.applyClient(textOperation);
   };
 

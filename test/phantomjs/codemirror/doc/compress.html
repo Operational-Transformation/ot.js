@@ -30,11 +30,12 @@
       <input type="hidden" id="download" name="download" value="codemirror-compressed.js"/>
       <p>Version: <select id="version" onchange="setVersion(this);" style="padding: 1px">
         <option value="http://codemirror.net/">HEAD</option>
+        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.1;f=">3.1</option>
+        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.02;f=">3.02</option>
+        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.01;f=">3.01</option>
         <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.0;f=">3.0</option>
-        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.0rc2;f=">3.0rc2</option>
-        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.0rc1;f=">3.0rc1</option>
-        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.0beta2;f=">3.0beta2</option>
-        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v3.0beta1;f=">3.0beta1</option>
+        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v2.38;f=">2.38</option>
+        <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v2.37;f=">2.37</option>
         <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v2.36;f=">2.36</option>
         <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v2.35;f=">2.35</option>
         <option value="http://marijnhaverbeke.nl/git/codemirror?a=blob_plain;hb=v2.34;f=">2.34</option>
@@ -67,11 +68,13 @@
           <option value="http://codemirror.net/lib/codemirror.js" selected>codemirror.js</option>
         </optgroup>
         <optgroup label="Modes">
+          <option value="http://codemirror.net/mode/apl/apl.js">apl.js</option>
           <option value="http://codemirror.net/mode/clike/clike.js">clike.js</option>
           <option value="http://codemirror.net/mode/clojure/clojure.js">clojure.js</option>
           <option value="http://codemirror.net/mode/coffeescript/coffeescript.js">coffeescript.js</option>
           <option value="http://codemirror.net/mode/commonlisp/commonlisp.js">commonlisp.js</option>
           <option value="http://codemirror.net/mode/css/css.js">css.js</option>
+          <option value="http://codemirror.net/mode/d/d.js">d.js</option>
           <option value="http://codemirror.net/mode/diff/diff.js">diff.js</option>
           <option value="http://codemirror.net/mode/ecl/ecl.js">ecl.js</option>
           <option value="http://codemirror.net/mode/erlang/erlang.js">erlang.js</option>
@@ -98,21 +101,26 @@
           <option value="http://codemirror.net/mode/plsql/plsql.js">plsql.js</option>
           <option value="http://codemirror.net/mode/properties/properties.js">properties.js</option>
           <option value="http://codemirror.net/mode/python/python.js">python.js</option>
+          <option value="http://codemirror.net/mode/q/q.js">q.js</option>
           <option value="http://codemirror.net/mode/r/r.js">r.js</option>
           <option value="http://codemirror.net/mode/rpm/changes/changes.js">rpm/changes.js</option>
           <option value="http://codemirror.net/mode/rpm/spec/spec.js">rpm/spec.js</option>
           <option value="http://codemirror.net/mode/rst/rst.js">rst.js</option>
           <option value="http://codemirror.net/mode/ruby/ruby.js">ruby.js</option>
           <option value="http://codemirror.net/mode/rust/rust.js">rust.js</option>
+          <option value="http://codemirror.net/mode/sass/sass.js">sass.js</option>
+          <option value="http://codemirror.net/mode/scala/scala.js">scala.js</option>
           <option value="http://codemirror.net/mode/scheme/scheme.js">scheme.js</option>
           <option value="http://codemirror.net/mode/shell/shell.js">shell.js</option>
           <option value="http://codemirror.net/mode/sieve/sieve.js">sieve.js</option>
           <option value="http://codemirror.net/mode/smalltalk/smalltalk.js">smalltalk.js</option>
           <option value="http://codemirror.net/mode/smarty/smarty.js">smarty.js</option>
+          <option value="http://codemirror.net/mode/sql/sql.js">sql.js</option>
           <option value="http://codemirror.net/mode/sparql/sparql.js">sparql.js</option>
           <option value="http://codemirror.net/mode/stex/stex.js">stex.js</option>
           <option value="http://codemirror.net/mode/tiddlywiki/tiddlywiki.js">tiddlywiki.js</option>
           <option value="http://codemirror.net/mode/tiki/tiki.js">tiki.js</option>
+          <option value="http://codemirror.net/mode/turtle/turtle.js">turtle.js</option>
           <option value="http://codemirror.net/mode/vb/vb.js">vb.js</option>
           <option value="http://codemirror.net/mode/vbscript/vbscript.js">vbscript.js</option>
           <option value="http://codemirror.net/mode/velocity/velocity.js">velocity.js</option>
@@ -122,22 +130,36 @@
           <option value="http://codemirror.net/mode/yaml/yaml.js">yaml.js</option>
           <option value="http://codemirror.net/mode/z80/z80.js">z80.js</option>
         </optgroup>
-        <optgroup label="Utilities and add-ons">
-          <option value="http://codemirror.net/lib/util/overlay.js">overlay.js</option>
-          <option value="http://codemirror.net/lib/util/multiplex.js">multiplex.js</option>
-          <option value="http://codemirror.net/lib/util/runmode.js">runmode.js</option>
-          <option value="http://codemirror.net/lib/util/simple-hint.js">simple-hint.js</option>
-          <option value="http://codemirror.net/lib/util/javascript-hint.js">javascript-hint.js</option>
-          <option value="http://codemirror.net/lib/util/xml-hint.js">xml-hint.js</option>
-          <option value="http://codemirror.net/lib/util/foldcode.js">foldcode.js</option>
-          <option value="http://codemirror.net/lib/util/dialog.js">dialog.js</option>
-          <option value="http://codemirror.net/lib/util/search.js">search.js</option>
-          <option value="http://codemirror.net/lib/util/searchcursor.js">searchcursor.js</option>
-          <option value="http://codemirror.net/lib/util/matchbrackets.js">matchbrackets.js</option>
-          <option value="http://codemirror.net/lib/util/formatting.js">formatting.js</option>
-          <option value="http://codemirror.net/lib/util/match-highlighter.js">match-highlighter.js</option>
-          <option value="http://codemirror.net/lib/util/closetag.js">closetag.js</option>
-          <option value="http://codemirror.net/lib/util/loadmode.js">loadmode.js</option>
+        <optgroup label="Add-ons">
+          <option value="http://codemirror.net/addon/dialog/dialog.js">dialog.js</option>
+          <option value="http://codemirror.net/addon/edit/closetag.js">closetag.js</option>
+          <option value="http://codemirror.net/addon/edit/continuecomment.js">continuecomment.js</option>
+          <option value="http://codemirror.net/addon/edit/continuelist.js">continuelist.js</option>
+          <option value="http://codemirror.net/addon/edit/matchbrackets.js">matchbrackets.js</option>
+          <option value="http://codemirror.net/addon/edit/closebrackets.js">closebrackets.js</option>
+          <option value="http://codemirror.net/addon/fold/foldcode.js">foldcode.js</option>
+          <option value="http://codemirror.net/addon/fold/collapserange.js">collapserange.js</option>
+          <option value="http://codemirror.net/addon/format/formatting.js">formatting.js</option>
+          <option value="http://codemirror.net/addon/hint/simple-hint.js">simple-hint.js</option>
+          <option value="http://codemirror.net/addon/hint/javascript-hint.js">javascript-hint.js</option>
+          <option value="http://codemirror.net/addon/hint/xml-hint.js">xml-hint.js</option>
+          <option value="http://codemirror.net/addon/hint/pig-hint.js">pig-hint.js</option>
+          <option value="http://codemirror.net/addon/hint/python-hint.js">python-hint.js</option>
+          <option value="http://codemirror.net/addon/mode/loadmode.js">loadmode.js</option>
+          <option value="http://codemirror.net/addon/mode/overlay.js">overlay.js</option>
+          <option value="http://codemirror.net/addon/mode/multiplex.js">multiplex.js</option>
+          <option value="http://codemirror.net/addon/runmode/colorize.js">colorize.js</option>
+          <option value="http://codemirror.net/addon/runmode/runmode.js">runmode.js</option>
+          <option value="http://codemirror.net/addon/runmode/runmode-standalone.js">runmode-standalone.js</option>
+          <option value="http://codemirror.net/addon/runmode/runmode.node.js">runmode.node.js</option>
+          <option value="http://codemirror.net/addon/search/search.js">search.js</option>
+          <option value="http://codemirror.net/addon/search/searchcursor.js">searchcursor.js</option>
+          <option value="http://codemirror.net/addon/search/match-highlighter.js">match-highlighter.js</option>
+          <option value="http://codemirror.net/addon/selection/mark-selection.js">mark-selection.js</option>
+          <option value="http://codemirror.net/addon/selection/active-line.js">active-line.js</option>
+          <option value="http://codemirror.net/addon/lint/lint.js">lint.js</option>
+          <option value="http://codemirror.net/addon/lint/javascript-lint.js">javascript-lint.js</option>
+          <option value="http://codemirror.net/addon/lint/json-lint.js">json-lint.js</option>
         </optgroup>
         <optgroup label="Keymaps">
           <option value="http://codemirror.net/keymap/emacs.js">emacs.js</option>

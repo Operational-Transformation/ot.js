@@ -11,12 +11,12 @@
     var startPos = cm.posFromIndex(start);
     var end = start + randomInt(Math.min(10, length - start));
     var endPos = cm.posFromIndex(end);
-    var newContent = randomString();
+    var newContent = Math.random() > 0.5 ? '' : randomString(3 + randomInt(7));
     cm.replaceRange(newContent, startPos, endPos);
   }
 
   function randomChange (cm) {
-    var n = 1 + randomInt(3);
+    var n = 1 + randomInt(4);
     while (n--) {
       randomEdit(cm);
     }
@@ -28,16 +28,29 @@
     });
   }
 
+  function getDocLength (doc) {
+    return doc.indexFromPos({ line: doc.lastLine(), ch: 0 }) +
+      doc.getLine(doc.lastLine()).length;
+  }
+
   asyncTest("converting between CodeMirror changes and operations", function () {
     var str = 'lorem ipsum';
 
-    var oldValue = str;
     var cm1 = CodeMirror(document.body, { value: str });
+    var docLength = getDocLength(cm1);
+    var changeRanges = [];
+    cm1.on('beforeChange', function (_, change) {
+      changeRanges.push(CodeMirrorAdapter.getChangeRange(cm1, change));
+    });
     cm1.on('change', function (_, change) {
-      var operation = CodeMirrorAdapter.operationFromCodeMirrorChange(change, oldValue);
-      //console.log(change, operation);
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(
+        change, cm1,
+        docLength, changeRanges
+      );
+      var operation = pair[0];
       CodeMirrorAdapter.applyOperationToCodeMirror(operation, cm2);
-      oldValue = cm1.getValue();
+      docLength = getDocLength(cm1);
+      changeRanges = [];
     });
 
     var cm2 = CodeMirror(document.body, { value: str });
@@ -65,26 +78,26 @@
   test("should trigger the 'change' event when the user makes an edit", function () {
     var cm = CodeMirror(document.body, { value: "lorem ipsum" });
     var cmAdapter = new CodeMirrorAdapter(cm);
-    var oldValues = [];
     var operations = [];
+    var inverses = [];
     cmAdapter.registerCallbacks({
-      change: function (oldValue, operation) {
-        oldValues.push(oldValue);
+      change: function (operation, inverse) {
         operations.push(operation);
+        inverses.push(inverse);
       }
     });
     var edit1 = new TextOperation().retain(11).insert(" dolor");
     CodeMirrorAdapter.applyOperationToCodeMirror(edit1, cm);
-    ok(oldValues.shift() === "lorem ipsum");
     ok(operations.shift().equals(edit1));
+    ok(inverses.shift().equals(edit1.invert("lorem ipsum")));
 
     var edit2 = new TextOperation()['delete'](1).retain(16);
     CodeMirrorAdapter.applyOperationToCodeMirror(edit2, cm);
-    ok(oldValues.shift() === "lorem ipsum dolor");
     ok(operations.shift().equals(edit2));
+    ok(inverses.shift().equals(edit2.invert("lorem ipsum dolor")));
 
-    ok(oldValues.length === 0);
     ok(operations.length === 0);
+    ok(inverses.length === 0);
   });
 
   test("applyOperation should apply the operation to CodeMirror, but not trigger an event", function () {

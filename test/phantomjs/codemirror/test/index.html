@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="../doc/docs.css">
     <link rel="stylesheet" href="mode_test.css">
     <script src="../lib/codemirror.js"></script>
-    <script src="../lib/util/overlay.js"></script>
-    <script src="../lib/util/searchcursor.js"></script>
+    <script src="../addon/mode/overlay.js"></script>
+    <script src="../addon/search/searchcursor.js"></script>
     <script src="../mode/javascript/javascript.js"></script>
     <script src="../mode/xml/xml.js"></script>
     <script src="../keymap/vim.js"></script>
@@ -25,6 +25,15 @@
         font-weight: bold;
         white-space: pre;
       }
+      #testground {
+        visibility: hidden;
+      }
+      #testground.offscreen {
+        visibility: visible;
+        position: absolute;
+        left: -10000px;
+        top: -10000px;
+      }
       .CodeMirror { border: 1px solid black; }
     </style>
   </head>
@@ -39,10 +48,11 @@
     <p id=status>Please enable JavaScript...</p>
     <div id=output></div>
 
-    <div style="visibility: hidden" id=testground></div>
+    <div id=testground></div>
 
     <script src="driver.js"></script>
     <script src="test.js"></script>
+    <script src="doc_test.js"></script>
     <script src="mode_test.js"></script>
     <script src="../mode/css/css.js"></script>
     <script src="../mode/css/test.js"></script>
@@ -56,12 +66,8 @@
     <script src="../mode/xquery/test.js"></script>
     <script src="vim_test.js"></script>
     <script>
-      window.onload = function() {
-        runHarness();
-      };
-      CodeMirror.on(window, 'hashchange', function(){
-        runHarness();
-      });
+      window.onload = runHarness;
+      CodeMirror.on(window, 'hashchange', runHarness);
 
       function esc(str) {
         return str.replace(/[<&]/, function(ch) { return ch == "<" ? "&lt;" : "&amp;"; });
@@ -98,7 +104,7 @@
         bad = "";
         verbose = false;
         debugUsed = Array();
-        totalTests = tests.length;
+        totalTests = countTests();
         progressTotal.nodeValue = " of " + totalTests;
         progressRan.nodeValue = count;
         output.innerHTML = '';
@@ -132,8 +138,6 @@
         var message = "???";
         if (type != "done") ++count;
         progress.style.width = (count * (progress.parentNode.clientWidth - 2) / totalTests) + "px";
-        progressTotal.nodeValue = " of " + totalTests +
-          (debugUsed.length && type != "done" ? "+" : "");
         progressRan.nodeValue = count;
         if (type == "ok") {
           message = "Test '" + name + "' succeeded";

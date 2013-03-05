@@ -111,8 +111,8 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
       }
     }
     else if (ch == "#") {
-        stream.skipToEnd();
-        return ret("error", "error");
+      stream.skipToEnd();
+      return ret("error", "error");
     }
     else if (isOperatorChar.test(ch)) {
       stream.eatWhile(isOperatorChar);
@@ -196,12 +196,19 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
     return true;
   }
   function register(varname) {
+    function inList(list) {
+      for (var v = list; v; v = v.next)
+        if (v.name == varname) return true;
+      return false;
+    }
     var state = cx.state;
     if (state.context) {
       cx.marked = "def";
-      for (var v = state.localVars; v; v = v.next)
-        if (v.name == varname) return;
+      if (inList(state.localVars)) return;
       state.localVars = {name: varname, next: state.localVars};
+    } else {
+      if (inList(state.globalVars)) return;
+      state.globalVars = {name: varname, next: state.globalVars};
     }
   }
 
@@ -235,7 +242,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   poplex.lex = true;
 
   function expect(wanted) {
-    return function expecting(type) {
+    return function(type) {
       if (type == wanted) return cont();
       else if (wanted == ";") return pass();
       else return cont(arguments.callee);
@@ -276,8 +283,11 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   }
     
   function maybeoperator(type, value) {
-    if (type == "operator" && /\+\+|--/.test(value)) return cont(maybeoperator);
-    if (type == "operator" && value == "?") return cont(expression, expect(":"), expression);
+    if (type == "operator") {
+      if (/\+\+|--/.test(value)) return cont(maybeoperator);
+      if (value == "?") return cont(expression, expect(":"), expression);
+      return cont(expression);
+    }
     if (type == ";") return;
     if (type == "(") return cont(pushlex(")"), commasep(expression, ")"), poplex, maybeoperator);
     if (type == ".") return cont(property, maybeoperator);
@@ -292,6 +302,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   }
   function objprop(type) {
     if (type == "variable") cx.marked = "property";
+    else if (type == "number" || type == "string") cx.marked = type + " property";
     if (atomicTypes.hasOwnProperty(type)) return cont(expect(":"), expression);
   }
   function commasep(what, end) {
@@ -300,7 +311,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
       if (type == end) return cont();
       return cont(expect(end));
     }
-    return function commaSeparated(type) {
+    return function(type) {
       if (type == end) return cont();
       else return pass(what, proceed);
     };
@@ -364,6 +375,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
         cc: [],
         lexical: new JSLexical((basecolumn || 0) - indentUnit, 0, "block", false),
         localVars: parserConfig.localVars,
+        globalVars: parserConfig.globalVars,
         context: parserConfig.localVars && {vars: parserConfig.localVars},
         indented: 0
       };
@@ -406,6 +418,9 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
 });
 
 CodeMirror.defineMIME("text/javascript", "javascript");
+CodeMirror.defineMIME("text/ecmascript", "javascript");
+CodeMirror.defineMIME("application/javascript", "javascript");
+CodeMirror.defineMIME("application/ecmascript", "javascript");
 CodeMirror.defineMIME("application/json", {name: "javascript", json: true});
 CodeMirror.defineMIME("text/typescript", { name: "javascript", typescript: true });
 CodeMirror.defineMIME("application/typescript", { name: "javascript", typescript: true });
