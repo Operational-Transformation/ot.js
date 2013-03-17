@@ -352,7 +352,7 @@
     <dl>
       <dt id="event_change"><code>"change" (instance, changeObj)</code></dt>
       <dd>Fires every time the content of the editor is changed.
-      The <code>changeObj</code> is a <code>{from, to, text,
+      The <code>changeObj</code> is a <code>{from, to, text, removed,
       next}</code> object containing information about the changes
       that occurred as second argument. <code>from</code>
       and <code>to</code> are the positions (in the pre-change
@@ -360,8 +360,10 @@
       example, it might be <code>{ch:0, line:18}</code> if the
       position is at the beginning of line #19). <code>text</code> is
       an array of strings representing the text that replaced the
-      changed range (split by line). If multiple changes happened
-      during a single operation, the object will have
+      changed range (split by line). <code>removed</code> is the text
+      that used to be between <code>from</code> and <code>to</code>,
+      which is overwritten by this change. If multiple changes
+      happened during a single operation, the object will have
       a <code>next</code> property pointing to another change object
       (which may point to another, etc).</dd>
 
@@ -466,9 +468,12 @@
       is associated with the <em>start</em> of the line. Mostly useful
       when you need to find out when your <a href="#setGutterMarker">gutter
       markers</a> on a given line are removed.</dd>
-      <dt id="event_line_change"><code>"change" ()</code></dt>
+      <dt id="event_line_change"><code>"change" (line, changeObj)</code></dt>
       <dd>Fires when the line's text content is changed in any way
-      (but the line is not deleted outright).</dd>
+      (but the line is not deleted outright). The <code>change</code>
+      object is similar to the one passed
+      to <a href="#event_change">change event</a> on the editor
+      object.</dd>
     </dl>
 
     <p>Marked range handles, as returned
@@ -522,6 +527,17 @@
     and <code>Alt-</code> (in that order!) to specify a modifier. So
     for example, <code>Shift-Ctrl-Space</code> would be a valid key
     identifier.</p>
+
+    <p>Common example: map the Tab key to insert spaces instead of a tab
+    character.</p>
+
+    <pre data-lang="javascript">
+{
+  Tab: function(cm) {
+    var spaces = Array(cm.getOption("indentUnit") + 1).join(" ");
+    cm.replaceSelection(spaces, "end", "+input");
+  }
+}</pre>
 
     <p>Alternatively, a character can be specified directly by
     surrounding it in single quotes, for example <code>'$'</code>
@@ -777,6 +793,9 @@
       to <a href="#extendSelection"><code>extendSelection</code></a>
       to leave the selection anchor in place.</dd>
 
+      <dt id="hasFocus"><code>cm.hasFocus() → bool</code></dt>
+      <dd>Tells you whether the editor currently has focus.</dd>
+
       <dt id="findPosH"><code>cm.findPosH(start, amount, unit, visually) → object</code></dt>
       <dd>Used to find the target position for horizontal cursor
       motion. <code>start</code> is a <code>{line, ch}</code>
@@ -835,7 +854,7 @@
       searched. <code>mode</code> can be a <a href="#option_mode">mode
       spec</a> or a mode object (an object with
       a <a href="#token"><code>token</code></a> method).
-      The <code>option</code> parameter is optional. If given it
+      The <code>options</code> parameter is optional. If given, it
       should be an object. Currently, only the <code>opaque</code>
       option is recognized. This defaults to off, but can be given to
       allow the overlay styling, when not <code>null</code>, to
@@ -1159,12 +1178,14 @@
       clientHeight}</code> object that represents the current scroll
       position, the size of the scrollable area, and the size of the
       visible area (minus scrollbars).</dd>
-      <dt id="scrollIntoView"><code>cm.scrollIntoView(pos)</code></dt>
+      <dt id="scrollIntoView"><code>cm.scrollIntoView(pos, margin)</code></dt>
       <dd>Scrolls the given element into view. <code>pos</code> may be
       either a <code>{line, ch}</code> position, referring to a given
       character, <code>null</code>, to refer to the cursor, or
       a <code>{left, top, right, bottom}</code> object, in
-      editor-local coordinates.</dd>
+      editor-local coordinates. The <code>margin</code> parameter is
+      optional. When given, it indicates the amount of pixels around
+      the given area that should be made visible as well.</dd>
 
       <dt id="cursorCoords"><code>cm.cursorCoords(where, mode) → object</code></dt>
       <dd>Returns an <code>{left, top, bottom}</code> object
@@ -1184,10 +1205,13 @@
       it'll give the size of the whole character, rather than just the
       position that the cursor would have when it would sit at that
       position.</dd>
-      <dt id="coordsChar"><code>cm.coordsChar(object) → pos</code></dt>
-      <dd>Given an <code>{left, top}</code> object (in page coordinates),
-      returns the <code>{line, ch}</code> position that corresponds to
-      it.</dd>
+      <dt id="coordsChar"><code>cm.coordsChar(object, mode) → pos</code></dt>
+      <dd>Given an <code>{left, top}</code> object, returns
+      the <code>{line, ch}</code> position that corresponds to it. The
+      optional <code>mode</code> parameter determines relative to what
+      the coordinates are interpreted. It may
+      be <code>"window"</code>, <code>"page"</code> (the default),
+      or <code>"local"</code>.</dd>
       <dt id="defaultTextHeight"><code>cm.defaultTextHeight() → number</code></dt>
       <dd>Returns the line height of the default font for the editor.</dd>
 
@@ -1210,7 +1234,7 @@
     <h3 id="api_mode">Mode, state, and token-related methods</h3>
 
     <p>When writing language-aware functionality, it can often be
-    useful to hook into the knowledge thate the CodeMirror language
+    useful to hook into the knowledge that the CodeMirror language
     mode has. See <a href="#modeapi">the section on modes</a> for a
     more detailed description of how these work.</p>
 
@@ -1533,6 +1557,12 @@
       called <code>newlineAndIndentContinueComment</code> that you can
       bind <code>Enter</code> to in order to have the editor prefix
       new lines inside C-like block comments with an asterisk.</dd>
+      <dt id="addon_placeholder"><a href="../addon/display/placeholder.js"><code>display/placeholder.js</code></a></dt>
+      <dd>Adds a <code>placeholder</code> option that can be used to
+      make text appear in the editor when it is empty and not focused.
+      Also gives the editor a <code>CodeMirror-empty</code> CSS class
+      whenever it doesn't contain any text.
+      See <a href="../demo/placeholder.html">the demo</a>.</dd>
     </dl>
 
     <h2 id="modeapi">Writing CodeMirror Modes</h2>

@@ -19,7 +19,8 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
       "function": kw("function"), "catch": kw("catch"),
       "for": kw("for"), "switch": kw("switch"), "case": kw("case"), "default": kw("default"),
       "in": operator, "typeof": operator, "instanceof": operator,
-      "true": atom, "false": atom, "null": atom, "undefined": atom, "NaN": atom, "Infinity": atom
+      "true": atom, "false": atom, "null": atom, "undefined": atom, "NaN": atom, "Infinity": atom,
+      "this": kw("this")
     };
 
     // Extend the 'normal' keywords with the TypeScript language extensions
@@ -52,7 +53,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
     return jsKeywords;
   }();
 
-  var isOperatorChar = /[+\-*&%=<>!?|]/;
+  var isOperatorChar = /[+\-*&%=<>!?|~^]/;
 
   function chain(stream, state, f) {
     state.tokenize = f;
@@ -148,7 +149,7 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
 
   // Parser
 
-  var atomicTypes = {"atom": true, "number": true, "variable": true, "string": true, "regexp": true};
+  var atomicTypes = {"atom": true, "number": true, "variable": true, "string": true, "regexp": true, "this": true};
 
   function JSLexical(indented, column, type, align, prev, info) {
     this.indented = indented;
@@ -300,10 +301,20 @@ CodeMirror.defineMode("javascript", function(config, parserConfig) {
   function property(type) {
     if (type == "variable") {cx.marked = "property"; return cont();}
   }
-  function objprop(type) {
-    if (type == "variable") cx.marked = "property";
-    else if (type == "number" || type == "string") cx.marked = type + " property";
+  function objprop(type, value) {
+    if (type == "variable") {
+      cx.marked = "property";
+      if (value == "get" || value == "set") return cont(getterSetter);
+    } else if (type == "number" || type == "string") {
+      cx.marked = type + " property";
+    }
     if (atomicTypes.hasOwnProperty(type)) return cont(expect(":"), expression);
+  }
+  function getterSetter(type) {
+    if (type == ":") return cont(expression);
+    if (type != "variable") return cont(expect(":"), expression);
+    cx.marked = "property";
+    return cont(functiondef);
   }
   function commasep(what, end) {
     function proceed(type) {

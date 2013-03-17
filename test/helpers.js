@@ -10,8 +10,12 @@
   function randomString (n) {
     var str = '';
     while (n--) {
-      var chr = randomInt(26) + 97;
-      str = str + String.fromCharCode(chr);
+      if (Math.random() < 0.15) {
+        str += '\n';
+      } else {
+        var chr = randomInt(26) + 97;
+        str += String.fromCharCode(chr);
+      }
     }
     return str;
   }
@@ -23,11 +27,11 @@
       left = str.length - operation.baseLength;
       if (left === 0) { break; }
       var r = Math.random();
-      var l = 1 + randomInt(Math.min(left, 20));
+      var l = 1 + randomInt(Math.min(left - 1, 20));
       if (r < 0.2) {
         operation.insert(randomString(l));
       } else if (r < 0.4) {
-        operation['delete'](str.slice(operation.baseLength, operation.baseLength + l));
+        operation['delete'](l);
       } else {
         operation.retain(l);
       }

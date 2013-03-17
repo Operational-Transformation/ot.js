@@ -512,6 +512,7 @@ testCM("scrollSnap", function(cm) {
 });
 
 testCM("selectionPos", function(cm) {
+  if (phantom) return;
   cm.setSize(100, 100);
   addDoc(cm, 200, 100);
   cm.setSelection(Pos(1, 100), Pos(98, 100));
@@ -909,14 +910,42 @@ testCM("wordMovementCommands", function(cm) {
   cm.execCommand("goWordLeft");
   eqPos(cm.getCursor(), Pos(0, 9));
   cm.execCommand("goWordRight"); cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
-  eqPos(cm.getCursor(), Pos(1, 1));
-  cm.execCommand("goWordRight");
+  eqPos(cm.getCursor(), Pos(0, 24));
+  cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
   eqPos(cm.getCursor(), Pos(1, 9));
   cm.execCommand("goWordRight");
   eqPos(cm.getCursor(), Pos(1, 13));
   cm.execCommand("goWordRight"); cm.execCommand("goWordRight");
   eqPos(cm.getCursor(), Pos(2, 0));
 }, {value: "this is (the) firstline.\na foo12\u00e9\u00f8\u00d7bar\n"});
+
+testCM("groupMovementCommands", function(cm) {
+  cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(0, 0));
+  cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(0, 4));
+  cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(0, 7));
+  cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(0, 10));
+  cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(0, 7));
+  cm.execCommand("goGroupRight"); cm.execCommand("goGroupRight"); cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(0, 15));
+  cm.setCursor(Pos(0, 17));
+  cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(0, 16));
+  cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(0, 14));
+  cm.execCommand("goGroupRight"); cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(0, 20));
+  cm.execCommand("goGroupRight");
+  eqPos(cm.getCursor(), Pos(1, 5));
+  cm.execCommand("goGroupLeft"); cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(1, 0));
+  cm.execCommand("goGroupLeft");
+  eqPos(cm.getCursor(), Pos(0, 16));
+}, {value: "booo ba---quux. ffff\n  abc d"});
 
 testCM("charMovementCommands", function(cm) {
   cm.execCommand("goCharLeft"); cm.execCommand("goColumnLeft");
@@ -1049,6 +1078,7 @@ testCM("lineChangeEvents", function(cm) {
 });
 
 testCM("scrollEntirelyToRight", function(cm) {
+  if (phantom) return;
   addDoc(cm, 500, 2);
   cm.setCursor(Pos(0, 500));
   var wrap = cm.getWrapperElement(), cur = byClassName(wrap, "CodeMirror-cursor")[0];
@@ -1342,4 +1372,29 @@ testCM("beforeSelectionChange", function(cm) {
   cm.execCommand("selectAll");
   eqPos(cm.getCursor("start"), Pos(0, 0));
   eqPos(cm.getCursor("end"), Pos(9, 9));
+});
+
+testCM("change_removedText", function(cm) {
+  cm.setValue("abc\ndef");
+
+  var removedText;
+  cm.on("change", function(cm, change) {
+    removedText = [change.removed, change.next && change.next.removed];
+  });
+
+  cm.operation(function() {
+    cm.replaceRange("xyz", Pos(0, 0), Pos(1,1));
+    cm.replaceRange("123", Pos(0,0));
+  });
+
+  eq(removedText[0].join("\n"), "abc\nd");
+  eq(removedText[1].join("\n"), "");
+
+  cm.undo();
+  eq(removedText[0].join("\n"), "123");
+  eq(removedText[1].join("\n"), "xyz");
+
+  cm.redo();
+  eq(removedText[0].join("\n"), "abc\nd");
+  eq(removedText[1].join("\n"), "");
 });

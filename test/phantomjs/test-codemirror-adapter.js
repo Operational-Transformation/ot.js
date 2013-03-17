@@ -11,7 +11,7 @@
     var startPos = cm.posFromIndex(start);
     var end = start + randomInt(Math.min(10, length - start));
     var endPos = cm.posFromIndex(end);
-    var newContent = Math.random() > 0.5 ? '' : randomString(3 + randomInt(7));
+    var newContent = Math.random() > 0.5 ? '' : randomString(randomInt(12));
     cm.replaceRange(newContent, startPos, endPos);
   }
 
@@ -37,20 +37,10 @@
     var str = 'lorem ipsum';
 
     var cm1 = CodeMirror(document.body, { value: str });
-    var docLength = getDocLength(cm1);
-    var changeRanges = [];
-    cm1.on('beforeChange', function (_, change) {
-      changeRanges.push(CodeMirrorAdapter.getChangeRange(cm1, change));
-    });
     cm1.on('change', function (_, change) {
-      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(
-        change, cm1,
-        docLength, changeRanges
-      );
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(change, cm1);
       var operation = pair[0];
       CodeMirrorAdapter.applyOperationToCodeMirror(operation, cm2);
-      docLength = getDocLength(cm1);
-      changeRanges = [];
     });
 
     var cm2 = CodeMirror(document.body, { value: str });
@@ -63,7 +53,12 @@
         randomOperation(cm1);
         var v1 = cm1.getValue();
         var v2 = cm2.getValue();
-        ok(v1 === v2, "the contents of both CodeMirror instances should be equal");
+        if (v1 !== v2) {
+          ok(false, "the contents of both CodeMirror instances should be equal");
+          start();
+          return;
+        }
+        ok(true, "the contents of both CodeMirror instances should be equal");
 
         if (n % 10 === 0) {
           setTimeout(step, 10); // give the browser a chance to repaint
