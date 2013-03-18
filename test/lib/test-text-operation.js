@@ -179,6 +179,17 @@ exports.testShouldBeComposedWith = function (test) {
   test.done();
 };
 
+exports.testShouldBeComposedWithInverted = h.randomTest(2*n, function (test) {
+  // invariant: shouldBeComposedWith(a, b) = shouldBeComposedWithInverted(b^{-1}, a^{-1})
+  var str = h.randomString();
+  var a = h.randomOperation(str);
+  var aInv = a.invert(str);
+  var afterA = a.apply(str);
+  var b = h.randomOperation(afterA);
+  var bInv = b.invert(afterA);
+  test.strictEqual(a.shouldBeComposedWith(b), bInv.shouldBeComposedWithInverted(aInv));
+});
+
 exports.testCompose = h.randomTest(n, function (test) {
   // invariant: apply(str, compose(a, b)) === apply(apply(str, a), b)
   var str = h.randomString(20);
