@@ -1,6 +1,6 @@
 /*
  *    /\
- *   /  \ ot 0.0.11
+ *   /  \ ot 0.0.12
  *  /    \ http://operational-transformation.github.com
  *  \    /
  *   \  / (c) 2012-2013 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
@@ -343,6 +343,25 @@ ot.TextOperation = (function () {
     return operation;
   };
 
+  function getSimpleOp (operation, fn) {
+    var ops = operation.ops;
+    var isRetain = TextOperation.isRetain;
+    switch (ops.length) {
+    case 1:
+      return ops[0];
+    case 2:
+      return isRetain(ops[0]) ? ops[1] : (isRetain(ops[1]) ? ops[0] : null);
+    case 3:
+      if (isRetain(ops[0]) && isRetain(ops[2])) { return ops[1]; }
+    }
+    return null;
+  }
+
+  function getStartIndex (operation) {
+    if (isRetain(operation.ops[0])) { return operation.ops[0]; }
+    return 0;
+  }
+
   // When you use ctrl-z to undo your latest changes, you expect the program not
   // to undo every single keystroke but to undo your last sentence you wrote at
   // a stretch or the deletion you did by holding the backspace key down. This
@@ -352,25 +371,6 @@ ot.TextOperation = (function () {
   // operations delete text at the same position. You may want to include other
   // factors like the time since the last change in your decision.
   TextOperation.prototype.shouldBeComposedWith = function (other) {
-    function getSimpleOp (operation, fn) {
-      var ops = operation.ops;
-      var isRetain = TextOperation.isRetain;
-      switch (ops.length) {
-      case 1:
-        return ops[0];
-      case 2:
-        return isRetain(ops[0]) ? ops[1] : (isRetain(ops[1]) ? ops[0] : null);
-      case 3:
-        if (isRetain(ops[0]) && isRetain(ops[2])) { return ops[1]; }
-      }
-      return null;
-    }
-
-    function getStartIndex (operation) {
-      if (isRetain(operation.ops[0])) { return operation.ops[0]; }
-      return 0;
-    }
-
     if (this.isNoop() || other.isNoop()) { return true; }
 
     var startA = getStartIndex(this), startB = getStartIndex(other);
@@ -390,10 +390,31 @@ ot.TextOperation = (function () {
     return false;
   };
 
+  // Decides whether two operations should be composed with each other
+  // if they were inverted, that is
+  // `shouldBeComposedWith(a, b) = shouldBeComposedWithInverted(b^{-1}, a^{-1})`.
+  TextOperation.prototype.shouldBeComposedWithInverted = function (other) {
+    if (this.isNoop() || other.isNoop()) { return true; }
+
+    var startA = getStartIndex(this), startB = getStartIndex(other);
+    var simpleA = getSimpleOp(this), simpleB = getSimpleOp(other);
+    if (!simpleA || !simpleB) { return false; }
+
+    if (isInsert(simpleA) && isInsert(simpleB)) {
+      return startA + simpleA.length === startB || startA === startB;
+    }
+
+    if (isDelete(simpleA) && isDelete(simpleB)) {
+      return startB - simpleB === startA;
+    }
+
+    return false;
+  };
+
   // Transform takes two operations A and B that happened concurrently and
-  // produces two operations A' and B' (in an arry) such that
-  // apply(apply(S, A), B') = apply(apply(S, B), A'). This function is the heart
-  // of OT.
+  // produces two operations A' and B' (in an array) such that
+  // `apply(apply(S, A), B') = apply(apply(S, B), A')`. This function is the
+  // heart of OT.
   TextOperation.transform = function (operation1, operation2) {
     if (operation1.baseLength !== operation2.baseLength) {
       throw new Error("Both operations have to have the same base length");
@@ -1066,12 +1087,12 @@ ot.CodeMirrorAdapter = (function () {
         if (posLe(pos, change.from)) { return indexFromPos(pos); }
         if (posLe(change.to, pos)) {
           return indexFromPos({
-            line: pos.line + (change.text.length > 0 ? change.text.length - 1 : 0) - (change.to.line - change.from.line),
+            line: pos.line + change.text.length - 1 - (change.to.line - change.from.line),
             ch: (change.to.line < pos.line) ?
               pos.ch :
               (change.text.length <= 1) ?
                 pos.ch - (change.to.ch - change.from.ch) + sumLengths(change.text) :
-                pos.ch - change.to.ch + (change.text.length > 0 ? last(change.text).length : 0)
+                pos.ch - change.to.ch + last(change.text).length
           }) + sumLengths(change.removed) - sumLengths(change.text);
         }
         if (change.from.line === pos.line) {
@@ -1205,6 +1226,7 @@ ot.CodeMirrorAdapter = (function () {
       cursorEl.style.borderLeftColor = color;
       cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
       cursorEl.style.marginTop = (cursorCoords.top - cursorCoords.bottom) + 'px';
+      cursorEl.style.zIndex = 0;
       cursorEl.setAttribute('data-clientid', clientId);
       this.cm.addWidget(cursorPos, cursorEl, false);
       return {
@@ -1553,7 +1575,6 @@ ot.EditorClient = (function () {
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
     this.undoManager = new UndoManager();
-    this.lastOperation = null;
 
     this.initializeClientList();
     this.initializeClients(clients);
@@ -1680,14 +1701,8 @@ ot.EditorClient = (function () {
     var meta = new SelfMeta(cursorBefore, this.cursor);
     var operation = new WrappedOperation(textOperation, meta);
 
-    var compose;
-    if (!this.undoManager.dontCompose && this.lastOperation && this.lastOperation.shouldBeComposedWith(textOperation)) {
-      compose = true;
-      this.lastOperation = this.lastOperation.compose(textOperation);
-    } else {
-      compose = false;
-      this.lastOperation = textOperation;
-    }
+    var compose = this.undoManager.undoStack.length > 0 &&
+      inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
     var inverseMeta = new SelfMeta(this.cursor, cursorBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
     this.applyClient(textOperation);
