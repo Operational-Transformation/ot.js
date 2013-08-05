@@ -4,7 +4,7 @@
   "keywords": [
     "operational transformation"
   ],
-  "version": "0.0.12",
+  "version": "0.0.13",
   "author": "Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)",
   "homepage": "http://operational-transformation.github.com",
   "repository": {
@@ -17,7 +17,7 @@
   "main": "./lib/index.js",
   "dependencies": {},
   "devDependencies": {
-    "socket.io": "0.9.13",
+    "socket.io": "0.9.16",
     "grunt": "*",
     "grunt-contrib-jshint": "*",
     "grunt-contrib-qunit": "*",
