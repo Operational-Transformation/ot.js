@@ -1,9 +1,74 @@
 (function() {
   var mode = CodeMirror.getMode({tabSize: 4}, "markdown");
   function MT(name) { test.mode(name, mode, Array.prototype.slice.call(arguments, 1)); }
+  var modeHighlightFormatting = CodeMirror.getMode({tabSize: 4}, {name: "markdown", highlightFormatting: true});
+  function FT(name) { test.mode(name, modeHighlightFormatting, Array.prototype.slice.call(arguments, 1)); }
+
+  FT("formatting_emAsterisk",
+     "[em&formatting&formatting-em *][em foo][em&formatting&formatting-em *]");
+
+  FT("formatting_emUnderscore",
+     "[em&formatting&formatting-em _][em foo][em&formatting&formatting-em _]");
+
+  FT("formatting_strongAsterisk",
+     "[strong&formatting&formatting-strong **][strong foo][strong&formatting&formatting-strong **]");
+
+  FT("formatting_strongUnderscore",
+     "[strong&formatting&formatting-strong __][strong foo][strong&formatting&formatting-strong __]");
+
+  FT("formatting_codeBackticks",
+     "[comment&formatting&formatting-code `][comment foo][comment&formatting&formatting-code `]");
+
+  FT("formatting_doubleBackticks",
+     "[comment&formatting&formatting-code ``][comment foo ` bar][comment&formatting&formatting-code ``]");
+
+  FT("formatting_atxHeader",
+     "[header&header-1&formatting&formatting-header&formatting-header-1 #][header&header-1  foo # bar ][header&header-1&formatting&formatting-header&formatting-header-1 #]");
+
+  FT("formatting_setextHeader",
+     "foo",
+     "[header&header-1&formatting&formatting-header&formatting-header-1 =]");
+
+  FT("formatting_blockquote",
+     "[quote&quote-1&formatting&formatting-quote&formatting-quote-1 > ][quote&quote-1 foo]");
+
+  FT("formatting_list",
+     "[variable-2&formatting&formatting-list&formatting-list-ul - ][variable-2 foo]");
+  FT("formatting_list",
+     "[variable-2&formatting&formatting-list&formatting-list-ol 1. ][variable-2 foo]");
+
+  FT("formatting_link",
+     "[link&formatting&formatting-link [][link foo][link&formatting&formatting-link ]]][string&formatting&formatting-link-string (][string http://example.com/][string&formatting&formatting-link-string )]");
+
+  FT("formatting_linkReference",
+     "[link&formatting&formatting-link [][link foo][link&formatting&formatting-link ]]][string&formatting&formatting-link-string [][string bar][string&formatting&formatting-link-string ]]]",
+     "[link&formatting&formatting-link [][link bar][link&formatting&formatting-link ]]:] [string http://example.com/]");
+
+  FT("formatting_linkWeb",
+     "[link&formatting&formatting-link <][link http://example.com/][link&formatting&formatting-link >]");
+
+  FT("formatting_linkEmail",
+     "[link&formatting&formatting-link <][link user@example.com][link&formatting&formatting-link >]");
+
+  FT("formatting_escape",
+     "[formatting&formatting-escape \\]*");
 
   MT("plainText",
      "foo");
+
+  // Don't style single trailing space
+  MT("trailingSpace1",
+     "foo ");
+
+  // Two or more trailing spaces should be styled with line break character
+  MT("trailingSpace2",
+     "foo[trailing-space-a  ][trailing-space-new-line  ]");
+
+  MT("trailingSpace3",
+     "foo[trailing-space-a  ][trailing-space-b  ][trailing-space-new-line  ]");
+
+  MT("trailingSpace4",
+     "foo[trailing-space-a  ][trailing-space-b  ][trailing-space-a  ][trailing-space-new-line  ]");
 
   // Code blocks using 4 spaces (regardless of CodeMirror.tabSize value)
   MT("codeBlocksUsing4Spaces",
@@ -39,20 +104,20 @@
      "[comment `]");
 
   // Unclosed backticks
-  // Instead of simply marking as CODE, it would be nice to have an 
+  // Instead of simply marking as CODE, it would be nice to have an
   // incomplete flag for CODE, that is styled slightly different.
   MT("unclosedBackticks",
      "foo [comment `bar]");
 
-  // Per documentation: "To include a literal backtick character within a 
-  // code span, you can use multiple backticks as the opening and closing 
+  // Per documentation: "To include a literal backtick character within a
+  // code span, you can use multiple backticks as the opening and closing
   // delimiters"
   MT("doubleBackticks",
      "[comment ``foo ` bar``]");
 
   // Tests based on Dingus
   // http://daringfireball.net/projects/markdown/dingus
-  // 
+  //
   // Multiple backticks within an inline code block
   MT("consecutiveBackticks",
      "[comment `foo```bar`]");
@@ -73,101 +138,105 @@
   // http://daringfireball.net/projects/markdown/syntax#header
 
   MT("atxH1",
-     "[header # foo]");
+     "[header&header-1 # foo]");
 
   MT("atxH2",
-     "[header ## foo]");
+     "[header&header-2 ## foo]");
 
   MT("atxH3",
-     "[header ### foo]");
+     "[header&header-3 ### foo]");
 
   MT("atxH4",
-     "[header #### foo]");
+     "[header&header-4 #### foo]");
 
   MT("atxH5",
-     "[header ##### foo]");
+     "[header&header-5 ##### foo]");
 
   MT("atxH6",
-     "[header ###### foo]");
+     "[header&header-6 ###### foo]");
 
   // H6 - 7x '#' should still be H6, per Dingus
   // http://daringfireball.net/projects/markdown/dingus
   MT("atxH6NotH7",
-     "[header ####### foo]");
+     "[header&header-6 ####### foo]");
+
+  // Inline styles should be parsed inside headers
+  MT("atxH1inline",
+     "[header&header-1 # foo ][header&header-1&em *bar*]");
 
   // Setext headers - H1, H2
   // Per documentation, "Any number of underlining =’s or -’s will work."
   // http://daringfireball.net/projects/markdown/syntax#header
-  // Ideally, the text would be marked as `header` as well, but this is 
-  // not really feasible at the moment. So, instead, we're testing against 
+  // Ideally, the text would be marked as `header` as well, but this is
+  // not really feasible at the moment. So, instead, we're testing against
   // what works today, to avoid any regressions.
-  // 
+  //
   // Check if single underlining = works
   MT("setextH1",
      "foo",
-     "[header =]");
+     "[header&header-1 =]");
 
   // Check if 3+ ='s work
   MT("setextH1",
      "foo",
-     "[header ===]");
+     "[header&header-1 ===]");
 
   // Check if single underlining - works
   MT("setextH2",
      "foo",
-     "[header -]");
+     "[header&header-2 -]");
 
   // Check if 3+ -'s work
   MT("setextH2",
      "foo",
-     "[header ---]");
+     "[header&header-2 ---]");
 
   // Single-line blockquote with trailing space
   MT("blockquoteSpace",
-     "[atom > foo]");
+     "[quote&quote-1 > foo]");
 
   // Single-line blockquote
   MT("blockquoteNoSpace",
-     "[atom >foo]");
+     "[quote&quote-1 >foo]");
 
   // No blank line before blockquote
   MT("blockquoteNoBlankLine",
      "foo",
-     "[atom > bar]");
+     "[quote&quote-1 > bar]");
 
   // Nested blockquote
   MT("blockquoteSpace",
-     "[atom > foo]",
-     "[number > > foo]",
-     "[atom > > > foo]");
+     "[quote&quote-1 > foo]",
+     "[quote&quote-1 >][quote&quote-2 > foo]",
+     "[quote&quote-1 >][quote&quote-2 >][quote&quote-3 > foo]");
 
   // Single-line blockquote followed by normal paragraph
   MT("blockquoteThenParagraph",
-     "[atom >foo]",
+     "[quote&quote-1 >foo]",
      "",
      "bar");
 
   // Multi-line blockquote (lazy mode)
   MT("multiBlockquoteLazy",
-     "[atom >foo]",
-     "[atom bar]");
+     "[quote&quote-1 >foo]",
+     "[quote&quote-1 bar]");
 
   // Multi-line blockquote followed by normal paragraph (lazy mode)
   MT("multiBlockquoteLazyThenParagraph",
-     "[atom >foo]",
-     "[atom bar]",
+     "[quote&quote-1 >foo]",
+     "[quote&quote-1 bar]",
      "",
      "hello");
 
   // Multi-line blockquote (non-lazy mode)
   MT("multiBlockquote",
-     "[atom >foo]",
-     "[atom >bar]");
+     "[quote&quote-1 >foo]",
+     "[quote&quote-1 >bar]");
 
   // Multi-line blockquote followed by normal paragraph (non-lazy mode)
   MT("multiBlockquoteThenParagraph",
-     "[atom >foo]",
-     "[atom >bar]",
+     "[quote&quote-1 >foo]",
+     "[quote&quote-1 >bar]",
      "",
      "hello");
 
@@ -206,6 +275,11 @@
      "foo",
      "1. bar",
      "2. hello");
+
+  // List after header
+  MT("listAfterHeader",
+     "[header&header-1 # foo]",
+     "[variable-2 - bar]");
 
   // Formatting in lists (*)
   MT("listAsteriskFormatting",
@@ -292,7 +366,7 @@
      "",
      "[variable-2 * bar]",
      "",
-     "    [variable-2&atom > hello]");
+     "    [variable-2&quote&quote-1 > hello]");
 
   // Code block
   MT("blockquoteCode",
@@ -350,7 +424,7 @@
      "",
      "    [variable-3 + bar]",
      "",
-     "        [atom&variable-3 > hello]");
+     "        [quote&quote-1&variable-3 > hello]");
 
   MT("listCode",
      "[variable-2 * foo]",
@@ -368,7 +442,7 @@
      "                [comment world]",
      "        [comment foo]",
      "    [variable-2 bar]");
-     
+
   // List nesting edge cases
   MT("listNested",
     "[variable-2 * foo]",
@@ -533,8 +607,14 @@
   MT("linkWeb",
      "[link <http://example.com/>] foo");
 
+  MT("linkWebDouble",
+     "[link <http://example.com/>] foo [link <http://example.com/>]");
+
   MT("linkEmail",
      "[link <user@example.com>] foo");
+
+  MT("linkEmailDouble",
+     "[link <user@example.com>] foo [link <user@example.com>]");
 
   MT("emAsterisk",
      "[em *foo*] bar");
@@ -548,7 +628,7 @@
   MT("emInWordUnderscore",
      "foo[em _bar_]hello");
 
-  // Per documentation: "...surround an * or _ with spaces, it’ll be 
+  // Per documentation: "...surround an * or _ with spaces, it’ll be
   // treated as a literal asterisk or underscore."
 
   MT("emEscapedBySpaceIn",
@@ -557,8 +637,12 @@
   MT("emEscapedBySpaceOut",
      "foo _ bar[em _hello_]world");
 
+  MT("emEscapedByNewline",
+     "foo",
+     "_ bar[em _hello_]world");
+
   // Unclosed emphasis characters
-  // Instead of simply marking as EM / STRONG, it would be nice to have an 
+  // Instead of simply marking as EM / STRONG, it would be nice to have an
   // incomplete flag for EM and STRONG, that is styled slightly different.
   MT("emIncompleteAsterisk",
      "foo [em *bar]");
@@ -623,9 +707,13 @@
   MT("doubleEscapeHash",
      "\\\\# foo");
 
+  MT("escapeNewline",
+     "\\",
+     "[em *foo*]");
+
 
   // Tests to make sure GFM-specific things aren't getting through
-  
+
   MT("taskList",
      "[variable-2 * [ ]] bar]");
 
