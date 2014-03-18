@@ -1002,7 +1002,7 @@ if (typeof module === 'object') {
 
 /*global ot */
 
-ot.CodeMirrorAdapter = (function () {
+ot.CodeMirrorAdapter = (function (global) {
   'use strict';
 
   var TextOperation = ot.TextOperation;
@@ -1016,7 +1016,12 @@ ot.CodeMirrorAdapter = (function () {
     bind(this, 'onCursorActivity');
     bind(this, 'onFocus');
     bind(this, 'onBlur');
-    cm.on('change', this.onChange);
+
+    if (global.CodeMirror && /^4\./.test(global.CodeMirror.version)) {
+      cm.on('changes', this.onChange);
+    } else {
+      cm.on('change', this.onChange);
+    }
     cm.on('cursorActivity', this.onCursorActivity);
     cm.on('focus', this.onFocus);
     cm.on('blur', this.onBlur);
@@ -1024,6 +1029,7 @@ ot.CodeMirrorAdapter = (function () {
 
   // Removes all event listeners from the CodeMirror instance.
   CodeMirrorAdapter.prototype.detach = function () {
+    this.cm.off('changes', this.onChange);
     this.cm.off('change', this.onChange);
     this.cm.off('cursorActivity', this.onCursorActivity);
     this.cm.off('focus', this.onFocus);
@@ -1045,9 +1051,11 @@ ot.CodeMirrorAdapter = (function () {
       doc.getLine(doc.lastLine()).length;
   }
 
-  // Converts a CodeMirror change object into a TextOperation and its inverse
-  // and returns them as a two-element array.
-  CodeMirrorAdapter.operationFromCodeMirrorChange = function (change, doc) {
+  // Converts a CodeMirror change array (as obtained from the 'changes' event
+  // in CodeMirror v4) or single change or linked list of changes (as returned
+  // by the 'change' event in CodeMirror prior to version 4) into a
+  // TextOperation and its inverse and returns them as a two-element array.
+  CodeMirrorAdapter.operationFromCodeMirrorChanges = function (changes, doc) {
     // Approach: Replay the changes, beginning with the most recent one, and
     // construct the operation and its inverse. We have to convert the position
     // in the pre-change coordinate system to an index. We have a method to
@@ -1059,10 +1067,15 @@ ot.CodeMirrorAdapter = (function () {
     // A disadvantage of this approach is its complexity `O(n^2)` in the length
     // of the linked list of changes.
 
-    var changes = [], i = 0;
-    while (change) {
-      changes[i++] = change;
-      change = change.next;
+    // Handle single change objects and linked lists of change objects.
+    var changeArray, i = 0;
+    if (typeof changes.from === 'object') {
+      changeArray = [];
+      while (changes) {
+        changeArray[i++] = changes;
+        changes = changes.next;
+      }
+      changes = changeArray;
     }
 
     var docEndLength = codemirrorDocLength(doc);
@@ -1105,7 +1118,7 @@ ot.CodeMirrorAdapter = (function () {
     }
 
     for (i = changes.length - 1; i >= 0; i--) {
-      change = changes[i];
+      var change = changes[i];
       indexFromPos = updateIndexFromPos(indexFromPos, change);
 
       var fromIndex = indexFromPos(change.from);
@@ -1130,6 +1143,10 @@ ot.CodeMirrorAdapter = (function () {
 
     return [operation, inverse];
   };
+
+  // Singular form for backwards compatibility.
+  CodeMirrorAdapter.operationFromCodeMirrorChange =
+    CodeMirrorAdapter.operationFromCodeMirrorChanges;
 
   // Apply an operation to a CodeMirror instance.
   CodeMirrorAdapter.applyOperationToCodeMirror = function (operation, cm) {
@@ -1156,9 +1173,9 @@ ot.CodeMirrorAdapter = (function () {
     this.callbacks = cb;
   };
 
-  CodeMirrorAdapter.prototype.onChange = function (_, change) {
+  CodeMirrorAdapter.prototype.onChange = function (_, changes) {
     if (!this.ignoreNextChange) {
-      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(change, this.cm);
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChanges(changes, this.cm);
       this.trigger('change', pair[0], pair[1]);
     }
     this.ignoreNextChange = false;
@@ -1295,7 +1312,7 @@ ot.CodeMirrorAdapter = (function () {
 
   return CodeMirrorAdapter;
 
-}());
+}(this));
 
 /*global ot */
 

@@ -37,8 +37,8 @@
     var str = 'lorem ipsum';
 
     var cm1 = CodeMirror(document.body, { value: str });
-    cm1.on('change', function (_, change) {
-      var pair = CodeMirrorAdapter.operationFromCodeMirrorChange(change, cm1);
+    cm1.on('changes', function (_, changes) {
+      var pair = CodeMirrorAdapter.operationFromCodeMirrorChanges(changes, cm1);
       var operation = pair[0];
       CodeMirrorAdapter.applyOperationToCodeMirror(operation, cm2);
     });
