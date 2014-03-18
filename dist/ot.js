@@ -547,22 +547,57 @@ ot.Cursor = (function (global) {
 
   var TextOperation = global.ot ? global.ot.TextOperation : require('./text-operation');
 
-  // A cursor has a `position` and a `selectionEnd`. Both are zero-based indexes
-  // into the document. When nothing is selected, `selectionEnd` is equal to
-  // `position`. When there is a selection, `position` is always the side of the
-  // selection that would move if you pressed an arrow key.
-  function Cursor (position, selectionEnd) {
+  // A cursor has a `position` and a `selection`. The property `position` is a
+  // zero-based index into the document and `selection` an array of Range
+  // objects (see below). When nothing is selected, the array is empty.
+  function Cursor (position, selection) {
     this.position = position;
-    this.selectionEnd = selectionEnd;
+
+    var filteredSelection = [];
+    for (var i = 0; i < selection.length; i++) {
+      if (!selection[i].isEmpty()) { filteredSelection.push(selection[i]); }
+    }
+    this.selection = filteredSelection;
   }
 
+  // Range has `anchor` and `head` properties, which are zero-based indices into
+  // the document. The `anchor` is the side of the selection that stays fixed,
+  // `head` is the side of the selection where the cursor is.
+  function Range (anchor, head) {
+    this.anchor = anchor;
+    this.head = head;
+  }
+
+  Cursor.Range = Range;
+
+  Range.fromJSON = function (obj) {
+    return new Range(obj.anchor, obj.head);
+  };
+
+  Range.prototype.equals = function (other) {
+    return this.anchor === other.anchor && this.head === other.head;
+  };
+
+  Range.prototype.isEmpty = function () {
+    return this.anchor === this.head;
+  };
+
   Cursor.fromJSON = function (obj) {
-    return new Cursor(obj.position, obj.selectionEnd);
+    var selection = [];
+    for (var i = 0; i < obj.selection.length; i++) {
+      selection[i] = Range.fromJSON(obj.selection[i]);
+    }
+    return new Cursor(obj.position, selection);
   };
 
   Cursor.prototype.equals = function (other) {
-    return this.position === other.position &&
-      this.selectionEnd === other.selectionEnd;
+    if (this.position !== other.position) { return false; }
+    if (this.selection.length !== other.selection.length) { return false; }
+    // FIXME: Sort ranges before comparing them?
+    for (var i = 0; i < this.selection.length; i++) {
+      if (!this.selection[i].equals(other.selection[i])) { return false; }
+    }
+    return true;
   };
 
   // Return the more current cursor information.
@@ -590,10 +625,15 @@ ot.Cursor = (function (global) {
     }
 
     var newPosition = transformIndex(this.position);
-    if (this.position === this.selectionEnd) {
-      return new Cursor(newPosition, newPosition);
+
+    var newSelection = [];
+    for (var i = 0; i < this.selection.length; i++) {
+      var range = this.selection[i];
+      var newRange = new Range(transformIndex(range.anchor), transformIndex(range.head));
+      if (!newRange.isEmpty()) { newSelection.push(newRange); }
     }
-    return new Cursor(newPosition, transformIndex(this.selectionEnd));
+
+    return new Cursor(newPosition, newSelection);
   };
 
   return Cursor;
@@ -1046,6 +1086,9 @@ ot.CodeMirrorAdapter = (function (global) {
   function posEq (a, b) { return cmpPos(a, b) === 0; }
   function posLe (a, b) { return cmpPos(a, b) <= 0; }
 
+  function minPos (a, b) { return posLe(a, b) ? a : b; }
+  function maxPos (a, b) { return posLe(a, b) ? b : a; }
+
   function codemirrorDocLength (doc) {
     return doc.indexFromPos({ line: doc.lastLine(), ch: 0 }) +
       doc.getLine(doc.lastLine()).length;
@@ -1198,23 +1241,33 @@ ot.CodeMirrorAdapter = (function (global) {
     var cm = this.cm;
     var cursorPos = cm.getCursor();
     var position = cm.indexFromPos(cursorPos);
-    var selectionEnd;
-    if (cm.somethingSelected()) {
-      var startPos = cm.getCursor(true);
-      var selectionEndPos = posEq(cursorPos, startPos) ? cm.getCursor(false) : startPos;
-      selectionEnd = cm.indexFromPos(selectionEndPos);
-    } else {
-      selectionEnd = position;
+
+    var selectionList = cm.listSelections();
+    var selection = [];
+    for (var i = 0; i < selectionList.length; i++) {
+      selection[i] = new Cursor.Range(
+        cm.indexFromPos(selectionList[i].anchor),
+        cm.indexFromPos(selectionList[i].head)
+      );
     }
 
-    return new Cursor(position, selectionEnd);
+    return new Cursor(position, selection);
   };
 
   CodeMirrorAdapter.prototype.setCursor = function (cursor) {
-    this.cm.setSelection(
-      this.cm.posFromIndex(cursor.position),
-      this.cm.posFromIndex(cursor.selectionEnd)
-    );
+    var position = this.cm.posFromIndex(cursor.position);
+    if (cursor.selection.length === 0) {
+      this.cm.setCursor(position);
+    } else {
+      var primary = null;
+      var ranges = [];
+      for (var i = 0; i < cursor.selection.length; i++) {
+        var range = cursor.selection[i];
+        if (range.head === position) { primary = i; }
+        ranges[i] = { anchor: range.anchor, head: range.head };
+      }
+      this.cm.setSelections(ranges, primary);
+    }
   };
 
   var addStyleRule = (function () {
@@ -1232,7 +1285,7 @@ ot.CodeMirrorAdapter = (function (global) {
 
   CodeMirrorAdapter.prototype.setOtherCursor = function (cursor, color, clientId) {
     var cursorPos = this.cm.posFromIndex(cursor.position);
-    if (cursor.position === cursor.selectionEnd) {
+    if (cursor.selection.length === 0) {
       // show cursor
       var cursorCoords = this.cm.cursorCoords(cursorPos);
       var cursorEl = document.createElement('pre');
@@ -1260,17 +1313,24 @@ ot.CodeMirrorAdapter = (function (global) {
       var rule = '.' + selectionClassName + ' { background: ' + color + '; }';
       addStyleRule(rule);
 
-      var fromPos, toPos;
-      if (cursor.selectionEnd > cursor.position) {
-        fromPos = cursorPos;
-        toPos = this.cm.posFromIndex(cursor.selectionEnd);
-      } else {
-        fromPos = this.cm.posFromIndex(cursor.selectionEnd);
-        toPos = cursorPos;
+      var selectionObjects = [];
+      for (var i = 0; i < cursor.selection.length; i++) {
+        var anchorPos = this.cm.posFromIndex(cursor.selection[i].anchor);
+        var headPos   = this.cm.posFromIndex(cursor.selection[i].head);
+        selectionObjects[i] = this.cm.markText(
+          minPos(anchorPos, headPos),
+          maxPos(anchorPos, headPos),
+          { className: selectionClassName }
+        );
       }
-      return this.cm.markText(fromPos, toPos, {
-        className: selectionClassName
-      });
+
+      return {
+        clear: function () {
+          for (var i = 0; i < selectionObjects.length; i++) {
+            selectionObjects[i].clear();
+          }
+        }
+      };
     }
   };
 
