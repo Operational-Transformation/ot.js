@@ -11,6 +11,14 @@ exports.testFromJSON = function (test) {
   test.done();
 };
 
+exports.testSomethingSelected = function (test) {
+  var cursor = new Cursor(7, [new Cursor.Range(7, 7), new Cursor.Range(10,10)]);
+  test.ok(!cursor.somethingSelected());
+  cursor = new Cursor(10, [new Cursor.Range(7, 10)]);
+  test.ok(cursor.somethingSelected());
+  test.done();
+};
+
 exports.testTransform = function (test) {
   var cursor = new Cursor(3, [new Cursor.Range(3, 7)]);
   test.ok(cursor
