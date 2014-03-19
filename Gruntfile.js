@@ -31,7 +31,7 @@ module.exports = function (grunt) {
       dist: {
         src: [
           'lib/text-operation.js',
-          'lib/cursor.js',
+          'lib/selection.js',
           'lib/wrapped-operation.js',
           'lib/undo-manager.js',
           'lib/client.js',

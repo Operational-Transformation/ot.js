@@ -2,6 +2,8 @@
 
 (function () {
 
+  var Selection         = ot.Selection;
+  var Range             = Selection.Range;
   var TextOperation     = ot.TextOperation;
   var CodeMirrorAdapter = ot.CodeMirrorAdapter;
 
@@ -68,6 +70,38 @@
       if (n === 0) { start(); }
     }
     step();
+  });
+
+  function randomSelection (n) {
+    if (Math.random() < 0.3) {
+      return Selection.createCursor(randomInt(n));
+    } else {
+      var ranges = [];
+      var i = randomInt(Math.ceil(n/4));
+      while (i < n) {
+        var from = i;
+        i += 1 + randomInt(Math.ceil(n/8));
+        var to = Math.min(i, n);
+        var range = Math.random() < 0.5 ? new Range(from, to) : new Range(to, from);
+        ranges.push(range);
+        i += 1 + randomInt(Math.ceil(n/4));
+      }
+      return new Selection(ranges);
+    }
+  }
+
+  test("getSelection and setSelection", function () {
+    var n = 200;
+    var doc = randomString(n);
+    var cm = CodeMirror(document.body, { value: doc });
+    var cmAdapter = new CodeMirrorAdapter(cm);
+
+    var j = 50;
+    while (j--) {
+      var selection = randomSelection(n);
+      cmAdapter.setSelection(selection);
+      ok(selection.equals(cmAdapter.getSelection()));
+    }
   });
 
   test("should trigger the 'change' event when the user makes an edit", function () {
@@ -144,8 +178,6 @@
 
   // TODO:
   // * trigger 'cursorActivity' (and ordering with 'change' event)
-  // * setCursor
-  // * getCursor
-  // * setOtherCursor
+  // * setOtherSelection
 
 }());

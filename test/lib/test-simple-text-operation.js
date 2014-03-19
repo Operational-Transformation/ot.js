@@ -1,4 +1,3 @@
-//var TextOperation = require('../../lib/text-operation');
 var SimpleTextOperation = require('../../lib/simple-text-operation');
 var h = require('../helpers');
 
