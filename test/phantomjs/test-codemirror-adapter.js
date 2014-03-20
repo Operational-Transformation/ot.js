@@ -1,4 +1,4 @@
-/*global test, asyncTest, ok, start, ot, expect, CodeMirror, randomString, randomInt */
+/*global test, asyncTest, ok, start, ot, expect, CodeMirror, randomString, randomInt, deepEqual */
 
 (function () {
 
@@ -129,6 +129,36 @@
     ok(inverses.length === 0);
   });
 
+  test("should trigger the 'selectionChange' event when the cursor position or selection changes", function () {
+    var doc = "hllo world!";
+    var cm = CodeMirror(document.body, { value: doc });
+    var cmAdapter = new CodeMirrorAdapter(cm);
+    cm.setCursor({ line: 0, ch: 5 });
+
+    var change = false;
+    var selection = null;
+    cmAdapter.registerCallbacks({
+      change: function () { change = true; },
+      selectionChange: function () {
+        ok(change);
+        selection = cm.listSelections();
+      }
+    });
+
+    cm.replaceRange("e", { line: 0, ch: 1 }, { line: 0, ch: 1 });
+    ok(selection.length === 1);
+    deepEqual(selection[0].from(), new CodeMirror.Pos(0, 6), "the cursor should be on position 6");
+    deepEqual(selection[0].to(), new CodeMirror.Pos(0, 6), "the cursor should be on position 6");
+
+    change = true;
+    var anchor = new CodeMirror.Pos(0, 12);
+    var head = new CodeMirror.Pos(0, 6);
+    cm.setSelection(anchor, head);
+    ok(selection.length === 1);
+    deepEqual(selection[0].from(), head, "the selection should start on position 0");
+    deepEqual(selection[0].to(), anchor, "the selection should end on position 12");
+  });
+
   test("applyOperation should apply the operation to CodeMirror, but not trigger an event", function () {
     var doc = "nanana";
     var cm = CodeMirror(document.body, { value: doc });
@@ -176,8 +206,30 @@
     ok(changes === 1);
   });
 
-  // TODO:
-  // * trigger 'cursorActivity' (and ordering with 'change' event)
-  // * setOtherSelection
+  test("setOtherSelection", function () {
+    var doc = "guten tag!\nlorem ipsum dolor";
+    var cm = CodeMirror(document.body, { value: doc });
+    var cmAdapter = new CodeMirrorAdapter(cm);
+    var selection1 = new Selection([new Range(3,3), new Range(9,16)]);
+    var handle1 = cmAdapter.setOtherSelection(selection1, '#ff0000', 'tim');
+    deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [
+      new CodeMirror.Pos(0, 3),
+      { from: new CodeMirror.Pos(0, 9), to: new CodeMirror.Pos(1, 5) }
+    ], "the codemirror instance should contain the other user's selection as marks");
+    var selection2 = new Selection([new Range(4,6)]);
+    var handle2 = cmAdapter.setOtherSelection(selection2, '#0000ff', 'tim');
+    deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [
+      new CodeMirror.Pos(0, 3),
+      { from: new CodeMirror.Pos(0, 9), to: new CodeMirror.Pos(1, 5) },
+      { from: new CodeMirror.Pos(0, 4), to: new CodeMirror.Pos(0, 6) }
+    ], "the codemirror instance should contain the other users' selection as marks");
+    handle1.clear();
+    deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [
+      { from: new CodeMirror.Pos(0, 4), to: new CodeMirror.Pos(0, 6) }
+    ], "the codemirror instance should contain the other users' selection as marks");
+    handle2.clear();
+    deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [],
+      "the codemirror instance should contain no more marks");
+  });
 
 }());

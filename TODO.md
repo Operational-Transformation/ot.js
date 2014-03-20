@@ -9,8 +9,8 @@
   * API for getting old operations
 * Tests
   * Server
-  * CodeMirrorServer
-  * CodeMirrorAdapter
+  * EditorSocketIOServer
   * EditorClient
   * SocketIOAdapter
   * Automatically test demo with PhantomJS
+  * Transform cursor

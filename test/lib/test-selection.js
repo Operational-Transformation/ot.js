@@ -26,7 +26,6 @@ exports.testSomethingSelected = function (test) {
 
 exports.testTransform = function (test) {
   var selection = new Selection([new Range(3, 7)]);
-  console.log(selection.transform(new TextOperation().retain(3).insert('lorem')['delete'](2).retain(42)));
   test.ok(selection
     .transform(new TextOperation().retain(3).insert('lorem')['delete'](2).retain(42))
     .equals(new Selection([new Range(8, 10)])));
