@@ -25,13 +25,13 @@ exports.testSomethingSelected = function (test) {
 };
 
 exports.testTransform = function (test) {
-  var selection = new Selection([new Range(3, 7)]);
+  var selection = new Selection([new Range(3, 7), new Range(19, 21)]);
   test.ok(selection
     .transform(new TextOperation().retain(3).insert('lorem')['delete'](2).retain(42))
-    .equals(new Selection([new Range(8, 10)])));
+    .equals(new Selection([new Range(8, 10), new Range(22,24)])));
   test.ok(selection
     .transform(new TextOperation()['delete'](45))
-    .equals(Selection.createCursor(0)));
+    .equals(new Selection([new Range(0,0), new Range(0,0)])));
   test.done();
 };
 

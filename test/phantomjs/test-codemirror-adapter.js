@@ -159,6 +159,24 @@
     deepEqual(selection[0].to(), anchor, "the selection should end on position 12");
   });
 
+  test("should trigger the 'blur' event when CodeMirror loses its focus", function () {
+    var cm = CodeMirror(document.body, { value: "Hallo Welt!" });
+    cm.focus();
+    var cmAdapter = new CodeMirrorAdapter(cm);
+    var blurred = false;
+    cmAdapter.registerCallbacks({
+      blur: function () { blurred = true; }
+    });
+
+    var textField = document.createElement('input');
+    textField.type = 'text';
+    textField.value = "Dies ist ein Textfeld";
+    document.body.appendChild(textField);
+    textField.focus();
+    ok(blurred);
+    document.body.removeChild(textField);
+  });
+
   test("applyOperation should apply the operation to CodeMirror, but not trigger an event", function () {
     var doc = "nanana";
     var cm = CodeMirror(document.body, { value: doc });

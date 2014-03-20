@@ -10,7 +10,5 @@
 * Tests
   * Server
   * EditorSocketIOServer
-  * EditorClient
   * SocketIOAdapter
   * Automatically test demo with PhantomJS
-  * Transform cursor
