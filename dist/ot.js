@@ -1290,23 +1290,18 @@ ot.CodeMirrorAdapter = (function (global) {
   CodeMirrorAdapter.prototype.setOtherCursor = function (position, color, clientId) {
     var cursorPos = this.cm.posFromIndex(position);
     var cursorCoords = this.cm.cursorCoords(cursorPos);
-    var cursorEl = document.createElement('pre');
+    var cursorEl = document.createElement('span');
     cursorEl.className = 'other-client';
+    cursorEl.style.display = 'inline-block';
+    cursorEl.style.padding = '0';
+    cursorEl.style.marginLeft = cursorEl.style.marginRight = '-1px';
     cursorEl.style.borderLeftWidth = '2px';
     cursorEl.style.borderLeftStyle = 'solid';
-    cursorEl.innerHTML = '&nbsp;';
     cursorEl.style.borderLeftColor = color;
     cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
-    cursorEl.style.marginTop = (cursorCoords.top - cursorCoords.bottom) + 'px';
     cursorEl.style.zIndex = 0;
     cursorEl.setAttribute('data-clientid', clientId);
-    this.cm.addWidget(cursorPos, cursorEl, false);
-    return {
-      clear: function () {
-        var parent = cursorEl.parentNode;
-        if (parent) { parent.removeChild(cursorEl); }
-      }
-    };
+    return this.cm.setBookmark(cursorPos, { widget: cursorEl, insertLeft: true });
   };
 
   CodeMirrorAdapter.prototype.setOtherSelectionRange = function (range, color, clientId) {
@@ -1628,6 +1623,7 @@ ot.EditorClient = (function () {
   };
 
   OtherClient.prototype.setName = function (name) {
+    if (this.name === name) { return; }
     this.name = name;
 
     this.li.textContent = name;
@@ -1654,7 +1650,10 @@ ot.EditorClient = (function () {
   };
 
   OtherClient.prototype.removeSelection = function () {
-    if (this.mark) { this.mark.clear(); }
+    if (this.mark) {
+      this.mark.clear();
+      this.mark = null;
+    }
   };
 
 
@@ -1703,15 +1702,19 @@ ot.EditorClient = (function () {
 
         for (clientId in clients) {
           if (clients.hasOwnProperty(clientId)) {
-            if (self.clients.hasOwnProperty(clientId)) {
-              var selection = clients[clientId];
-              if (selection) {
-                self.clients[clientId].updateSelection(
-                  self.transformSelection(Selection.fromJSON(selection))
-                );
-              } else {
-                self.clients[clientId].removeSelection();
-              }
+            var clientObject = self.getClientObject(clientId);
+
+            if (clients[clientId].name) {
+              clientObject.setName(clients[clientId].name);
+            }
+
+            var selection = clients[clientId].selection;
+            if (selection) {
+              self.clients[clientId].updateSelection(
+                self.transformSelection(Selection.fromJSON(selection))
+              );
+            } else {
+              self.clients[clientId].removeSelection();
             }
           }
         }
