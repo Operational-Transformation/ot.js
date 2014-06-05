@@ -43,7 +43,7 @@ exports.testClient = function (test) {
     client.applyClient(operation);
   }
 
-  client.applyServer(new TextOperation().retain(6)['delete'](1).insert("D").retain(4));
+  client.applyServer(client.revision + 1, new TextOperation().retain(6)['delete'](1).insert("D").retain(4));
   test.strictEqual(doc, "lorem Dolor");
   test.ok(client.state instanceof Client.Synchronized);
   test.strictEqual(client.revision, 2);
@@ -55,7 +55,7 @@ exports.testClient = function (test) {
   test.ok(client.state.outstanding.equals(new TextOperation().retain(11).insert(" ")));
   test.ok(getSentOperation().equals(new TextOperation().retain(11).insert(" ")));
 
-  client.applyServer(new TextOperation().retain(5).insert(" ").retain(6));
+  client.applyServer(client.revision + 1, new TextOperation().retain(5).insert(" ").retain(6));
   test.strictEqual(doc, "lorem  Dolor ");
   test.strictEqual(client.revision, 3);
   test.ok(client.state instanceof Client.AwaitingConfirm);
@@ -70,21 +70,21 @@ exports.testClient = function (test) {
   test.ok(client.state.outstanding.equals(new TextOperation().retain(12).insert(" ")));
   test.ok(client.state.buffer.equals(new TextOperation().retain(13).insert("Sit")));
 
-  client.applyServer(new TextOperation().retain(6).insert("Ipsum").retain(6));
+  client.applyServer(client.revision + 1, new TextOperation().retain(6).insert("Ipsum").retain(6));
   test.strictEqual(client.revision, 4);
   test.strictEqual(doc, "lorem Ipsum Dolor Sit");
   test.ok(client.state instanceof Client.AwaitingWithBuffer);
   test.ok(client.state.outstanding.equals(new TextOperation().retain(17).insert(" ")));
   test.ok(client.state.buffer.equals(new TextOperation().retain(18).insert("Sit")));
 
-  client.serverAck();
+  client.serverAck(client.revision + 1);
   test.strictEqual(getSentRevision(), 5);
   test.ok(getSentOperation().equals(new TextOperation().retain(18).insert("Sit")));
   test.strictEqual(client.revision, 5);
   test.ok(client.state instanceof Client.AwaitingConfirm);
   test.ok(client.state.outstanding.equals(new TextOperation().retain(18).insert("Sit")));
 
-  client.serverAck();
+  client.serverAck(client.revision + 1);
   test.strictEqual(client.revision, 6);
   test.ok(typeof sentRevision !== 'number');
   test.ok(client.state instanceof Client.Synchronized);
@@ -100,7 +100,7 @@ exports.testClient = function (test) {
 
   client.state.resend(client);
   test.ok(sentOperation.equals(new TextOperation().retain(21).insert('a')));
-  client.serverAck();
+  client.serverAck(client.revision + 1);
   test.ok(sentOperation.equals(new TextOperation().retain(22).insert('m')));
 
 

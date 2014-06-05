@@ -119,7 +119,7 @@
     // Let's say, we are Nina and we're editing a document together with Tim and Jan
 
     // Firstly, we get informed one of them has replaced the lower case 'd' with a capital 'D'
-    serverAdapter.trigger('operation', [6, -1, 'D', 4]);
+    serverAdapter.trigger('operation', 2, [6, -1, 'D', 4]);
     strictEqual(editorAdapter.getValue(), "lorem Dolor");
     ok(editorClient.state instanceof Client.Synchronized);
     strictEqual(editorClient.revision, 2);
@@ -140,7 +140,7 @@
     strictEqual(serverAdapter.sentSelection, null);
 
     // Someone inserts an extra white space between "lorem" and "Dolor"
-    serverAdapter.trigger('operation', [5, " ", 6]);
+    serverAdapter.trigger('operation', 3, [5, " ", 6]);
     strictEqual(editorAdapter.getValue(), "lorem  Dolor ");
     strictEqual(editorClient.revision, 3);
     ok(editorClient.state instanceof Client.AwaitingConfirm);
@@ -186,7 +186,7 @@
     ok(editorClient.state.buffer.equals(new TextOperation().retain(13).insert("Sit")));
 
     // Someone inserts "Ipsum" between "lorem" and "Dolor"
-    serverAdapter.trigger('operation', [6, "Ipsum", 6]);
+    serverAdapter.trigger('operation', 4, [6, "Ipsum", 6]);
     strictEqual(editorClient.revision, 4);
     strictEqual(editorAdapter.getValue(), "lorem Ipsum Dolor Sit");
     ok(editorClient.state instanceof Client.AwaitingWithBuffer);
@@ -196,7 +196,7 @@
     ok(editorAdapter.selection.equals(Selection.createCursor(21)));
 
     // We get an acknowledgement for our first sent operation from the server!
-    serverAdapter.trigger('ack');
+    serverAdapter.trigger('ack', 5);
     strictEqual(serverAdapter.sentRevision, 5);
     deepEqual(serverAdapter.sentOperation, [18, "Sit"]);
     strictEqual(editorClient.revision, 5);
@@ -209,7 +209,7 @@
     strictEqual(serverAdapter.sentSelection, null);
 
     // The operation that was sent a few moments ago gets acknowledged right away
-    serverAdapter.trigger('ack');
+    serverAdapter.trigger('ack', 6);
     strictEqual(editorClient.revision, 6);
     strictEqual(serverAdapter.sentRevision, 5);
     ok(editorClient.state instanceof Client.Synchronized);
@@ -322,7 +322,7 @@
     editorAdapter.trigger('selectionChange');
 
     // Someone inserts an extra white space between "lorem" and "dolor"
-    serverAdapter.trigger('operation', [5, " ", 6]);
+    serverAdapter.trigger('operation', revision + 1, [5, " ", 6]);
     strictEqual(editorAdapter.getValue(), "lorem  s");
 
     editorClient.undo();

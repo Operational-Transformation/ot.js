@@ -859,7 +859,7 @@ ot.Client = (function (global) {
   // Client constructor
   function Client (revision) {
     this.revision = revision; // the next expected revision number
-    this.state = synchronized_; // start state
+    this.setState(synchronized_); // start state
   }
 
   Client.prototype.setState = function (state) {
@@ -872,16 +872,14 @@ ot.Client = (function (global) {
   };
 
   // Call this method with a new operation from the server
-  Client.prototype.applyServer = function (operation) {
-    this.revision++;
-    this.setState(this.state.applyServer(this, operation));
+  Client.prototype.applyServer = function (revision, operation) {
+    this.setState(this.state.applyServer(this, revision, operation));
   };
 
-  Client.prototype.serverAck = function () {
-    this.revision++;
-    this.setState(this.state.serverAck(this));
+  Client.prototype.serverAck = function (revision) {
+    this.setState(this.state.serverAck(this, revision));
   };
-  
+
   Client.prototype.serverReconnect = function () {
     if (typeof this.state.resend === 'function') { this.state.resend(this); }
   };
@@ -919,14 +917,18 @@ ot.Client = (function (global) {
     return new AwaitingConfirm(operation);
   };
 
-  Synchronized.prototype.applyServer = function (client, operation) {
+  Synchronized.prototype.applyServer = function (client, revision, operation) {
+    if (revision - client.revision > 1) {
+      throw new Error("Invalid revision.");
+    }
+    client.revision = revision;
     // When we receive a new operation from the server, the operation can be
     // simply applied to the current document
     client.applyOperation(operation);
     return this;
   };
 
-  Synchronized.prototype.serverAck = function (client) {
+  Synchronized.prototype.serverAck = function (client, revision) {
     throw new Error("There is no pending operation.");
   };
 
@@ -951,7 +953,11 @@ ot.Client = (function (global) {
     return new AwaitingWithBuffer(this.outstanding, operation);
   };
 
-  AwaitingConfirm.prototype.applyServer = function (client, operation) {
+  AwaitingConfirm.prototype.applyServer = function (client, revision, operation) {
+    if (revision - client.revision > 1) {
+      throw new Error("Invalid revision.");
+    }
+    client.revision = revision;
     // This is another client's operation. Visualization:
     //
     //                   /\
@@ -967,7 +973,11 @@ ot.Client = (function (global) {
     return new AwaitingConfirm(pair[0]);
   };
 
-  AwaitingConfirm.prototype.serverAck = function (client) {
+  AwaitingConfirm.prototype.serverAck = function (client, revision) {
+    if (revision - client.revision > 1) {
+      throw new Error("Invalid revision.");
+    }
+    client.revision = revision;
     // The client's operation has been acknowledged
     // => switch to synchronized state
     return synchronized_;
@@ -999,7 +1009,11 @@ ot.Client = (function (global) {
     return new AwaitingWithBuffer(this.outstanding, newBuffer);
   };
 
-  AwaitingWithBuffer.prototype.applyServer = function (client, operation) {
+  AwaitingWithBuffer.prototype.applyServer = function (client, revision, operation) {
+    if (revision - client.revision > 1) {
+      throw new Error("Invalid revision.");
+    }
+    client.revision = revision;
     // Operation comes from another client
     //
     //                       /\
@@ -1024,7 +1038,11 @@ ot.Client = (function (global) {
     return new AwaitingWithBuffer(pair1[0], pair2[0]);
   };
 
-  AwaitingWithBuffer.prototype.serverAck = function (client) {
+  AwaitingWithBuffer.prototype.serverAck = function (client, revision) {
+    if (revision - client.revision > 1) {
+      throw new Error("Invalid revision.");
+    }
+    client.revision = revision;
     // The pending operation has been acknowledged
     // => send buffer
     client.sendOperation(client.revision, this.buffer);
@@ -1041,7 +1059,6 @@ ot.Client = (function (global) {
     client.sendOperation(client.revision, this.outstanding);
   };
 
-
   return Client;
 
 }(this));
@@ -1049,6 +1066,7 @@ ot.Client = (function (global) {
 if (typeof module === 'object') {
   module.exports = ot.Client;
 }
+
 
 /*global ot */
 
@@ -1396,9 +1414,11 @@ ot.SocketIOAdapter = (function () {
       .on('set_name', function (clientId, name) {
         self.trigger('set_name', clientId, name);
       })
-      .on('ack', function () { self.trigger('ack'); })
-      .on('operation', function (clientId, operation, selection) {
-        self.trigger('operation', operation);
+      .on('ack', function (revision) {
+        self.trigger('ack', revision);
+      })
+      .on('operation', function (clientId, revision, operation, selection) {
+        self.trigger('operation', revision, operation);
         self.trigger('selection', clientId, selection);
       })
       .on('selection', function (clientId, selection) {
@@ -1430,6 +1450,7 @@ ot.SocketIOAdapter = (function () {
   return SocketIOAdapter;
 
 }());
+
 /*global ot, $ */
 
 ot.AjaxAdapter = (function () {
@@ -1679,9 +1700,9 @@ ot.EditorClient = (function () {
     this.serverAdapter.registerCallbacks({
       client_left: function (clientId) { self.onClientLeft(clientId); },
       set_name: function (clientId, name) { self.getClientObject(clientId).setName(name); },
-      ack: function () { self.serverAck(); },
-      operation: function (operation) {
-        self.applyServer(TextOperation.fromJSON(operation));
+      ack: function (revision) { self.serverAck(revision); },
+      operation: function (revision, operation) {
+        self.applyServer(revision, TextOperation.fromJSON(operation));
       },
       selection: function (clientId, selection) {
         if (selection) {
