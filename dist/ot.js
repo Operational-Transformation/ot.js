@@ -876,6 +876,10 @@ ot.Client = (function (global) {
     this.setState(this.state.applyServer(this, revision, operation));
   };
 
+  Client.prototype.applyOperations = function (head, operations) {
+    this.setState(this.state.applyOperations(this, head, operations));
+  };
+
   Client.prototype.serverAck = function (revision) {
     this.setState(this.state.serverAck(this, revision));
   };
@@ -975,7 +979,7 @@ ot.Client = (function (global) {
 
   AwaitingConfirm.prototype.serverAck = function (client, revision) {
     if (revision - client.revision > 1) {
-      throw new Error("Invalid revision.");
+      return new Stale(this.outstanding, client, revision).getOperations();
     }
     client.revision = revision;
     // The client's operation has been acknowledged
@@ -1040,7 +1044,7 @@ ot.Client = (function (global) {
 
   AwaitingWithBuffer.prototype.serverAck = function (client, revision) {
     if (revision - client.revision > 1) {
-      throw new Error("Invalid revision.");
+      return new StaleWithBuffer(this.outstanding, this.buffer, client, revision).getOperations();
     }
     client.revision = revision;
     // The pending operation has been acknowledged
@@ -1058,6 +1062,93 @@ ot.Client = (function (global) {
     // Now that it has reconnected, we resend the outstanding operation.
     client.sendOperation(client.revision, this.outstanding);
   };
+
+
+  function Stale(acknowlaged, client, revision) {
+    this.acknowlaged = acknowlaged;
+    this.client = client;
+    this.revision = revision;
+  }
+  Client.Stale = Stale;
+
+  Stale.prototype.applyClient = function (client, operation) {
+    throw new Error("Ignored client-side change.");
+  };
+
+  Stale.prototype.applyServer = function (client, revision, operation) {
+    throw new Error("Ignored server-side change.");
+  };
+
+  Stale.prototype.applyOperations = function (client, head, operations) {
+    var transform = this.acknowlaged.constructor.transform;
+    for (var i = 0; i < operations.length; i++) {
+      var op = ot.TextOperation.fromJSON(operations[i]);
+      var pair = transform(this.acknowlaged, op);
+      client.applyOperation(pair[1]);
+      this.acknowlaged = pair[0];
+    }
+    client.revision = this.revision;
+    return synchronized_;
+  };
+
+  Stale.prototype.serverAck = function (client, revision) {
+    throw new Error("There is no pending operation.");
+  };
+
+  Stale.prototype.transformSelection = function (selection) {
+    return selection;
+  };
+
+  Stale.prototype.getOperations = function () {
+    this.client.getOperations(this.client.revision, this.revision - 1); // acknowlaged is the one at revision
+    return this;
+  };
+
+
+  function StaleWithBuffer(acknowlaged, buffer, client, revision) {
+    this.acknowlaged = acknowlaged;
+    this.buffer = buffer;
+    this.client = client;
+    this.revision = revision;
+  }
+  Client.StaleWithBuffer = StaleWithBuffer;
+
+  StaleWithBuffer.prototype.applyClient = function (client, operation) {
+    throw new Error("Ignored client-side change.");
+  };
+
+  StaleWithBuffer.prototype.applyServer = function (client, revision, operation) {
+    throw new Error("Ignored server-side change.");
+  };
+
+  StaleWithBuffer.prototype.applyOperations = function (client, head, operations) {
+    var transform = this.acknowlaged.constructor.transform;
+    for (var i = 0; i < operations.length; i++) {
+      var op = ot.TextOperation.fromJSON(operations[i]);
+      var pair1 = transform(this.acknowlaged, op);
+      var pair2 = transform(this.buffer, pair1[1]);
+      client.applyOperation(pair1[1]);
+      this.acknowlaged = pair1[0];
+      this.buffer = pair2[0];
+    }
+    client.revision = this.revision;
+    client.sendOperation(client.revision, this.buffer);
+    return new AwaitingConfirm(this.buffer);
+  };
+
+  StaleWithBuffer.prototype.serverAck = function (client, revision) {
+    throw new Error("There is no pending operation.");
+  };
+
+  StaleWithBuffer.prototype.transformSelection = function (selection) {
+    return selection;
+  };
+
+  StaleWithBuffer.prototype.getOperations = function () {
+    this.client.getOperations(this.client.revision, this.revision - 1); // acknowlaged is the one at revision
+    return this;
+  };
+
 
   return Client;
 
@@ -1421,6 +1512,9 @@ ot.SocketIOAdapter = (function () {
         self.trigger('operation', revision, operation);
         self.trigger('selection', clientId, selection);
       })
+      .on('operations', function (head, operations) {
+        self.trigger('operations', head, operations);
+      })
       .on('selection', function (clientId, selection) {
         self.trigger('selection', clientId, selection);
       })
@@ -1435,6 +1529,10 @@ ot.SocketIOAdapter = (function () {
 
   SocketIOAdapter.prototype.sendSelection = function (selection) {
     this.socket.emit('selection', selection);
+  };
+
+  SocketIOAdapter.prototype.getOperations = function (base, head) {
+    this.socket.emit('get_operations', base, head);
   };
 
   SocketIOAdapter.prototype.registerCallbacks = function (cb) {
@@ -1704,6 +1802,9 @@ ot.EditorClient = (function () {
       operation: function (revision, operation) {
         self.applyServer(revision, TextOperation.fromJSON(operation));
       },
+      operations: function (head, operations) {
+        self.applyOperations(head, operations);
+      },
       selection: function (clientId, selection) {
         if (selection) {
           self.getClientObject(clientId).updateSelection(
@@ -1843,6 +1944,10 @@ ot.EditorClient = (function () {
 
   EditorClient.prototype.sendOperation = function (revision, operation) {
     this.serverAdapter.sendOperation(revision, operation.toJSON(), this.selection);
+  };
+
+  EditorClient.prototype.getOperations = function (base, head) {
+    this.serverAdapter.getOperations(base, head);
   };
 
   EditorClient.prototype.applyOperation = function (operation) {
