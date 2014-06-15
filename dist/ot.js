@@ -1072,7 +1072,7 @@ ot.Client = (function (global) {
   Client.Stale = Stale;
 
   Stale.prototype.applyClient = function (client, operation) {
-    throw new Error("Ignored client-side change.");
+    return new StaleWithBuffer(this.acknowlaged, operation, client, this.revision);
   };
 
   Stale.prototype.applyServer = function (client, revision, operation) {
@@ -1114,7 +1114,8 @@ ot.Client = (function (global) {
   Client.StaleWithBuffer = StaleWithBuffer;
 
   StaleWithBuffer.prototype.applyClient = function (client, operation) {
-    throw new Error("Ignored client-side change.");
+    var buffer = this.buffer.compose(operation);
+    return new StaleWithBuffer(this.acknowlaged, buffer, client, this.revision);
   };
 
   StaleWithBuffer.prototype.applyServer = function (client, revision, operation) {
