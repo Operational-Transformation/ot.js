@@ -1128,7 +1128,7 @@ ot.Client = (function (global) {
       var op = ot.TextOperation.fromJSON(operations[i]);
       var pair1 = transform(this.acknowlaged, op);
       var pair2 = transform(this.buffer, pair1[1]);
-      client.applyOperation(pair1[1]);
+      client.applyOperation(pair2[1]);
       this.acknowlaged = pair1[0];
       this.buffer = pair2[0];
     }
