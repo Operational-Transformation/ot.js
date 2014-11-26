@@ -1,6 +1,6 @@
 {
   "name": "ot",
-  "version": "0.0.14",
+  "version": "0.0.15",
   "main": "./dist/ot.js",
   "dependencies": {}
 }
