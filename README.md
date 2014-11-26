@@ -9,5 +9,5 @@
 
 [npm-image]: https://img.shields.io/npm/v/ot.svg?style=flat
 [npm-url]: https://npmjs.org/package/ot
-[travis-image]: https://img.shields.io/travis/Operational-Transformation/ot.svg?style=flat
-[travis-url]: https://travis-ci.org/Operational-Transformation/ot
+[travis-image]: https://img.shields.io/travis/Operational-Transformation/ot.js.svg?style=flat
+[travis-url]: https://travis-ci.org/Operational-Transformation/ot.js
