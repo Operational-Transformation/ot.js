@@ -17,7 +17,7 @@
   "main": "./lib/index.js",
   "dependencies": {},
   "devDependencies": {
-    "socket.io": "0.9.16",
+    "socket.io": "1.2.1",
     "grunt": "*",
     "grunt-contrib-jshint": "*",
     "grunt-contrib-qunit": "*",
