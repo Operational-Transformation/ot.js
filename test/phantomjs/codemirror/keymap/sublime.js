@@ -1,3 +1,6 @@
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 // A rough approximation of Sublime Text's keybindings
 // Depends on addon/search/searchcursor.js and optionally addon/dialog/dialogs.js
 
@@ -14,7 +17,8 @@
   var map = CodeMirror.keyMap.sublime = {fallthrough: "default"};
   var cmds = CodeMirror.commands;
   var Pos = CodeMirror.Pos;
-  var ctrl = CodeMirror.keyMap["default"] == CodeMirror.keyMap.pcDefault ? "Ctrl-" : "Cmd-";
+  var mac = CodeMirror.keyMap["default"] == CodeMirror.keyMap.macDefault;
+  var ctrl = mac ? "Cmd-" : "Ctrl-";
 
   // This is not exactly Sublime's algorithm. I couldn't make heads or tails of that.
   function findPosSubword(doc, start, dir) {
@@ -52,10 +56,22 @@
   cmds[map["Alt-Right"] = "goSubwordRight"] = function(cm) { moveSubword(cm, 1); };
 
   cmds[map[ctrl + "Up"] = "scrollLineUp"] = function(cm) {
-    cm.scrollTo(null, cm.getScrollInfo().top - cm.defaultTextHeight());
+    var info = cm.getScrollInfo();
+    if (!cm.somethingSelected()) {
+      var visibleBottomLine = cm.lineAtHeight(info.top + info.clientHeight, "local");
+      if (cm.getCursor().line >= visibleBottomLine)
+        cm.execCommand("goLineUp");
+    }
+    cm.scrollTo(null, info.top - cm.defaultTextHeight());
   };
   cmds[map[ctrl + "Down"] = "scrollLineDown"] = function(cm) {
-    cm.scrollTo(null, cm.getScrollInfo().top + cm.defaultTextHeight());
+    var info = cm.getScrollInfo();
+    if (!cm.somethingSelected()) {
+      var visibleTopLine = cm.lineAtHeight(info.top, "local")+1;
+      if (cm.getCursor().line <= visibleTopLine)
+        cm.execCommand("goLineDown");
+    }
+    cm.scrollTo(null, info.top + cm.defaultTextHeight());
   };
 
   cmds[map["Shift-" + ctrl + "L"] = "splitSelectionByLine"] = function(cm) {
@@ -71,6 +87,11 @@
   };
 
   map["Shift-Tab"] = "indentLess";
+
+  cmds[map["Esc"] = "singleSelectionTop"] = function(cm) {
+    var range = cm.listSelections()[0];
+    cm.setSelection(range.anchor, range.head, {scroll: false});
+  };
 
   cmds[map[ctrl + "L"] = "selectLine"] = function(cm) {
     var ranges = cm.listSelections(), extended = [];
@@ -120,10 +141,16 @@
       cm.setSelection(word.from, word.to);
       fullWord = true;
     } else {
-      var query = cm.getRange(from, to);
-      var cur = cm.getSearchCursor(fullWord ? new RegExp("\\b" + query + "\\b") : query, to);
-      if (cur.findNext())
+      var text = cm.getRange(from, to);
+      var query = fullWord ? new RegExp("\\b" + text + "\\b") : text;
+      var cur = cm.getSearchCursor(query, to);
+      if (cur.findNext()) {
         cm.addSelection(cur.from(), cur.to());
+      } else {
+        cur = cm.getSearchCursor(query, Pos(cm.firstLine(), 0));
+        if (cur.findNext())
+          cm.addSelection(cur.from(), cur.to());
+      }
     }
     if (fullWord)
       cm.state.sublimeFindFullWord = cm.doc.sel;
@@ -160,10 +187,15 @@
     });
   };
 
-  cmds[map["Shift-" + ctrl + "Up"] = "swapLineUp"] = function(cm) {
-    var ranges = cm.listSelections(), linesToMove = [], at = cm.firstLine() - 1;
+  var swapLineCombo = mac ? "Cmd-Ctrl-" : "Shift-Ctrl-";
+
+  cmds[map[swapLineCombo + "Up"] = "swapLineUp"] = function(cm) {
+    var ranges = cm.listSelections(), linesToMove = [], at = cm.firstLine() - 1, newSels = [];
     for (var i = 0; i < ranges.length; i++) {
       var range = ranges[i], from = range.from().line - 1, to = range.to().line;
+      newSels.push({anchor: Pos(range.anchor.line - 1, range.anchor.ch),
+                    head: Pos(range.head.line - 1, range.head.ch)});
+      if (range.to().ch == 0 && !range.empty()) --to;
       if (from > at) linesToMove.push(from, to);
       else if (linesToMove.length) linesToMove[linesToMove.length - 1] = to;
       at = to;
@@ -173,24 +205,21 @@
         var from = linesToMove[i], to = linesToMove[i + 1];
         var line = cm.getLine(from);
         cm.replaceRange("", Pos(from, 0), Pos(from + 1, 0), "+swapLine");
-        if (to > cm.lastLine()) {
+        if (to > cm.lastLine())
           cm.replaceRange("\n" + line, Pos(cm.lastLine()), null, "+swapLine");
-          var sels = cm.listSelections(), last = sels[sels.length - 1];
-          var head = last.head.line == to ? Pos(to - 1) : last.head;
-          var anchor = last.anchor.line == to ? Pos(to - 1) : last.anchor;
-          cm.setSelections(sels.slice(0, sels.length - 1).concat([{head: head, anchor: anchor}]));
-        } else {
+        else
           cm.replaceRange(line + "\n", Pos(to, 0), null, "+swapLine");
-        }
       }
+      cm.setSelections(newSels);
       cm.scrollIntoView();
     });
   };
 
-  cmds[map["Shift-" + ctrl + "Down"] = "swapLineDown"] = function(cm) {
+  cmds[map[swapLineCombo + "Down"] = "swapLineDown"] = function(cm) {
     var ranges = cm.listSelections(), linesToMove = [], at = cm.lastLine() + 1;
     for (var i = ranges.length - 1; i >= 0; i--) {
       var range = ranges[i], from = range.to().line + 1, to = range.from().line;
+      if (range.to().ch == 0 && !range.empty()) from--;
       if (from < at) linesToMove.push(from, to);
       else if (linesToMove.length) linesToMove[linesToMove.length - 1] = to;
       at = to;
@@ -357,9 +386,7 @@
 
   map["Alt-Q"] = "wrapLines";
 
-  var mapK = CodeMirror.keyMap["sublime-Ctrl-K"] = {auto: "sublime", nofallthrough: true};
-
-  map[ctrl + "K"] = function(cm) {cm.setOption("keyMap", "sublime-Ctrl-K");};
+  var cK = ctrl + "K ";
 
   function modifyWordOrSelection(cm, mod) {
     cm.operation(function() {
@@ -380,9 +407,9 @@
     });
   }
 
-  mapK[ctrl + "Backspace"] = "delLineLeft";
+  map[cK + ctrl + "Backspace"] = "delLineLeft";
 
-  cmds[mapK[ctrl + "K"] = "delLineRight"] = function(cm) {
+  cmds[map[cK + ctrl + "K"] = "delLineRight"] = function(cm) {
     cm.operation(function() {
       var ranges = cm.listSelections();
       for (var i = ranges.length - 1; i >= 0; i--)
@@ -391,22 +418,22 @@
     });
   };
 
-  cmds[mapK[ctrl + "U"] = "upcaseAtCursor"] = function(cm) {
+  cmds[map[cK + ctrl + "U"] = "upcaseAtCursor"] = function(cm) {
     modifyWordOrSelection(cm, function(str) { return str.toUpperCase(); });
   };
-  cmds[mapK[ctrl + "L"] = "downcaseAtCursor"] = function(cm) {
+  cmds[map[cK + ctrl + "L"] = "downcaseAtCursor"] = function(cm) {
     modifyWordOrSelection(cm, function(str) { return str.toLowerCase(); });
   };
 
-  cmds[mapK[ctrl + "Space"] = "setSublimeMark"] = function(cm) {
+  cmds[map[cK + ctrl + "Space"] = "setSublimeMark"] = function(cm) {
     if (cm.state.sublimeMark) cm.state.sublimeMark.clear();
     cm.state.sublimeMark = cm.setBookmark(cm.getCursor());
   };
-  cmds[mapK[ctrl + "A"] = "selectToSublimeMark"] = function(cm) {
+  cmds[map[cK + ctrl + "A"] = "selectToSublimeMark"] = function(cm) {
     var found = cm.state.sublimeMark && cm.state.sublimeMark.find();
     if (found) cm.setSelection(cm.getCursor(), found);
   };
-  cmds[mapK[ctrl + "W"] = "deleteToSublimeMark"] = function(cm) {
+  cmds[map[cK + ctrl + "W"] = "deleteToSublimeMark"] = function(cm) {
     var found = cm.state.sublimeMark && cm.state.sublimeMark.find();
     if (found) {
       var from = cm.getCursor(), to = found;
@@ -415,7 +442,7 @@
       cm.replaceRange("", from, to);
     }
   };
-  cmds[mapK[ctrl + "X"] = "swapWithSublimeMark"] = function(cm) {
+  cmds[map[cK + ctrl + "X"] = "swapWithSublimeMark"] = function(cm) {
     var found = cm.state.sublimeMark && cm.state.sublimeMark.find();
     if (found) {
       cm.state.sublimeMark.clear();
@@ -423,13 +450,13 @@
       cm.setCursor(found);
     }
   };
-  cmds[mapK[ctrl + "Y"] = "sublimeYank"] = function(cm) {
+  cmds[map[cK + ctrl + "Y"] = "sublimeYank"] = function(cm) {
     if (cm.state.sublimeKilled != null)
       cm.replaceSelection(cm.state.sublimeKilled, null, "paste");
   };
 
-  mapK[ctrl + "G"] = "clearBookmarks";
-  cmds[mapK[ctrl + "C"] = "showInCenter"] = function(cm) {
+  map[cK + ctrl + "G"] = "clearBookmarks";
+  cmds[map[cK + ctrl + "C"] = "showInCenter"] = function(cm) {
     var pos = cm.cursorCoords(null, "local");
     cm.scrollTo(null, (pos.top + pos.bottom) / 2 - cm.getScrollInfo().clientHeight / 2);
   };
@@ -455,9 +482,53 @@
     });
   };
 
+  function getTarget(cm) {
+    var from = cm.getCursor("from"), to = cm.getCursor("to");
+    if (CodeMirror.cmpPos(from, to) == 0) {
+      var word = wordAt(cm, from);
+      if (!word.word) return;
+      from = word.from;
+      to = word.to;
+    }
+    return {from: from, to: to, query: cm.getRange(from, to), word: word};
+  }
+
+  function findAndGoTo(cm, forward) {
+    var target = getTarget(cm);
+    if (!target) return;
+    var query = target.query;
+    var cur = cm.getSearchCursor(query, forward ? target.to : target.from);
+
+    if (forward ? cur.findNext() : cur.findPrevious()) {
+      cm.setSelection(cur.from(), cur.to());
+    } else {
+      cur = cm.getSearchCursor(query, forward ? Pos(cm.firstLine(), 0)
+                                              : cm.clipPos(Pos(cm.lastLine())));
+      if (forward ? cur.findNext() : cur.findPrevious())
+        cm.setSelection(cur.from(), cur.to());
+      else if (target.word)
+        cm.setSelection(target.from, target.to);
+    }
+  };
+  cmds[map[ctrl + "F3"] = "findUnder"] = function(cm) { findAndGoTo(cm, true); };
+  cmds[map["Shift-" + ctrl + "F3"] = "findUnderPrevious"] = function(cm) { findAndGoTo(cm,false); };
+  cmds[map["Alt-F3"] = "findAllUnder"] = function(cm) {
+    var target = getTarget(cm);
+    if (!target) return;
+    var cur = cm.getSearchCursor(target.query);
+    var matches = [];
+    var primaryIndex = -1;
+    while (cur.findNext()) {
+      matches.push({anchor: cur.from(), head: cur.to()});
+      if (cur.from().line <= target.from.line && cur.from().ch <= target.from.ch)
+        primaryIndex++;
+    }
+    cm.setSelections(matches, primaryIndex);
+  };
+
   map["Shift-" + ctrl + "["] = "fold";
   map["Shift-" + ctrl + "]"] = "unfold";
-  mapK[ctrl + "0"] = mapK[ctrl + "j"] = "unfoldAll";
+  map[cK + ctrl + "0"] = map[cK + ctrl + "j"] = "unfoldAll";
 
   map[ctrl + "I"] = "findIncremental";
   map["Shift-" + ctrl + "I"] = "findIncrementalReverse";
@@ -465,4 +536,5 @@
   map["F3"] = "findNext";
   map["Shift-F3"] = "findPrev";
 
+  CodeMirror.normalizeKeyMap(map);
 });

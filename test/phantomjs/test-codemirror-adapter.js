@@ -138,7 +138,9 @@
     var change = false;
     var selection = null;
     cmAdapter.registerCallbacks({
-      change: function () { change = true; },
+      change: function () {
+        change = true;
+      },
       selectionChange: function () {
         ok(change);
         selection = cm.listSelections();

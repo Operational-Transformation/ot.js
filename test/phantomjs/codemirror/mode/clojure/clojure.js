@@ -1,3 +1,6 @@
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 /**
  * Author: Hans Engel
  * Branched from CodeMirror's Scheme mode (by Koh Zi Han, based on implementation by Koh Zi Chun)
@@ -15,7 +18,7 @@
 
 CodeMirror.defineMode("clojure", function (options) {
     var BUILTIN = "builtin", COMMENT = "comment", STRING = "string", CHARACTER = "string-2",
-        ATOM = "atom", NUMBER = "number", BRACKET = "bracket", KEYWORD = "keyword";
+        ATOM = "atom", NUMBER = "number", BRACKET = "bracket", KEYWORD = "keyword", VAR = "variable";
     var INDENT_WORD_SKIP = options.indentUnit || 2;
     var NORMAL_INDENT_UNIT = options.indentUnit || 2;
 
@@ -56,7 +59,7 @@ CodeMirror.defineMode("clojure", function (options) {
         sign: /[+-]/,
         exponent: /e/i,
         keyword_char: /[^\s\(\[\;\)\]]/,
-        symbol: /[\w*+!\-\._?:<>\/]/
+        symbol: /[\w*+!\-\._?:<>\/\xa1-\uffff]/
     };
 
     function stateStack(indent, type, prev) { // represents a state stack object
@@ -111,7 +114,7 @@ CodeMirror.defineMode("clojure", function (options) {
         var first = stream.next();
         // Read special literals: backspace, newline, space, return.
         // Just read all lowercase letters.
-        if (first.match(/[a-z]/) && stream.match(/[a-z]+/, true)) {
+        if (first && first.match(/[a-z]/) && stream.match(/[a-z]+/, true)) {
             return;
         }
         // Read unicode character: \u1000 \uA0a1
@@ -217,7 +220,9 @@ CodeMirror.defineMode("clojure", function (options) {
                             returnType = BUILTIN;
                         } else if (atoms && atoms.propertyIsEnumerable(stream.current())) {
                             returnType = ATOM;
-                        } else returnType = null;
+                        } else {
+                          returnType = VAR;
+                        }
                     }
             }
 

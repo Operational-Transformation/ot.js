@@ -1061,17 +1061,17 @@ ot.CodeMirrorAdapter = (function (global) {
   function CodeMirrorAdapter (cm) {
     this.cm = cm;
     this.ignoreNextChange = false;
+    this.changeInProgress = false;
+    this.selectionChanged = false;
 
+    bind(this, 'onChanges');
     bind(this, 'onChange');
     bind(this, 'onCursorActivity');
     bind(this, 'onFocus');
     bind(this, 'onBlur');
 
-    if (global.CodeMirror && /^4\./.test(global.CodeMirror.version)) {
-      cm.on('changes', this.onChange);
-    } else {
-      cm.on('change', this.onChange);
-    }
+    cm.on('changes', this.onChanges);
+    cm.on('change', this.onChange);
     cm.on('cursorActivity', this.onCursorActivity);
     cm.on('focus', this.onFocus);
     cm.on('blur', this.onBlur);
@@ -1079,7 +1079,7 @@ ot.CodeMirrorAdapter = (function (global) {
 
   // Removes all event listeners from the CodeMirror instance.
   CodeMirrorAdapter.prototype.detach = function () {
-    this.cm.off('changes', this.onChange);
+    this.cm.off('changes', this.onChanges);
     this.cm.off('change', this.onChange);
     this.cm.off('cursorActivity', this.onCursorActivity);
     this.cm.off('focus', this.onFocus);
@@ -1120,17 +1120,6 @@ ot.CodeMirrorAdapter = (function (global) {
     // A disadvantage of this approach is its complexity `O(n^2)` in the length
     // of the linked list of changes.
 
-    // Handle single change objects and linked lists of change objects.
-    var changeArray, i = 0;
-    if (typeof changes.from === 'object') {
-      changeArray = [];
-      while (changes) {
-        changeArray[i++] = changes;
-        changes = changes.next;
-      }
-      changes = changeArray;
-    }
-
     var docEndLength = codemirrorDocLength(doc);
     var operation    = new TextOperation().retain(docEndLength);
     var inverse      = new TextOperation().retain(docEndLength);
@@ -1170,7 +1159,7 @@ ot.CodeMirrorAdapter = (function (global) {
       };
     }
 
-    for (i = changes.length - 1; i >= 0; i--) {
+    for (var i = changes.length - 1; i >= 0; i--) {
       var change = changes[i];
       indexFromPos = updateIndexFromPos(indexFromPos, change);
 
@@ -1226,17 +1215,33 @@ ot.CodeMirrorAdapter = (function (global) {
     this.callbacks = cb;
   };
 
-  CodeMirrorAdapter.prototype.onChange = function (_, changes) {
+  CodeMirrorAdapter.prototype.onChange = function () {
+    // By default, CodeMirror's event order is the following:
+    // 1. 'change', 2. 'cursorActivity', 3. 'changes'.
+    // We want to fire the 'selectionChange' event after the 'change' event,
+    // but need the information from the 'changes' event. Therefore, we detect
+    // when a change is in progress by listening to the change event, setting
+    // a flag that makes this adapter defer all 'cursorActivity' events.
+    this.changeInProgress = true;
+  };
+
+  CodeMirrorAdapter.prototype.onChanges = function (_, changes) {
     if (!this.ignoreNextChange) {
       var pair = CodeMirrorAdapter.operationFromCodeMirrorChanges(changes, this.cm);
       this.trigger('change', pair[0], pair[1]);
     }
+    if (this.selectionChanged) { this.trigger('selectionChange'); }
+    this.changeInProgress = false;
     this.ignoreNextChange = false;
   };
 
   CodeMirrorAdapter.prototype.onCursorActivity =
   CodeMirrorAdapter.prototype.onFocus = function () {
-    this.trigger('selectionChange');
+    if (this.changeInProgress) {
+      this.selectionChanged = true;
+    } else {
+      this.trigger('selectionChange');
+    }
   };
 
   CodeMirrorAdapter.prototype.onBlur = function () {

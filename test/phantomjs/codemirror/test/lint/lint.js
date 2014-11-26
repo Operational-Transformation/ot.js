@@ -19,10 +19,10 @@ var topAllowedGlobals = Object.create(null);
 ("Error RegExp Number String Array Function Object Math Date undefined " +
  "parseInt parseFloat Infinity NaN isNaN " +
  "window document navigator prompt alert confirm console " +
- "FileReader Worker postMessage importScripts " +
+ "screen FileReader Worker postMessage importScripts " +
  "setInterval clearInterval setTimeout clearTimeout " +
  "CodeMirror " +
- "test exports require module define")
+ "test exports require module define requirejs")
   .split(" ").forEach(function(n) { topAllowedGlobals[n] = true; });
 
 var fs = require("fs"), acorn = require("./acorn.js"), walk = require("./walk.js");
@@ -30,6 +30,8 @@ var fs = require("fs"), acorn = require("./acorn.js"), walk = require("./walk.js
 var scopePasser = walk.make({
   ScopeBody: function(node, prev, c) { c(node, node.scope); }
 });
+
+var cBlob = /^\/\/ CodeMirror, copyright \(c\) by Marijn Haverbeke and others\n\/\/ Distributed under an MIT license: http:\/\/codemirror.net\/LICENSE\n\n/;
 
 function checkFile(fileName) {
   var file = fs.readFileSync(fileName, "utf8"), notAllowed;
@@ -41,6 +43,9 @@ function checkFile(fileName) {
     var info = acorn.getLineInfo(file, notAllowed.index);
     fail(msg + " at line " + info.line + ", column " + info.column, {source: fileName});
   }
+
+  if (!cBlob.test(file))
+    fail("Missing license blob", {source: fileName});
   
   var globalsSeen = Object.create(null);
 
@@ -152,7 +157,7 @@ function checkDir(dir) {
   fs.readdirSync(dir).forEach(function(file) {
     var fname = dir + "/" + file;
     if (/\.js$/.test(file)) checkFile(fname);
-    else if (file != "dep" && fs.lstatSync(fname).isDirectory()) checkDir(fname);
+    else if (fs.lstatSync(fname).isDirectory()) checkDir(fname);
   });
 }
 

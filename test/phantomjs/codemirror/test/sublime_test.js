@@ -178,6 +178,12 @@
                 1, 0, 2, 0,
                 2, 2, 2, 2));
 
+  stTest("swapLineEmptyBottomSel", "1\n2\n3",
+         setSel(0, 1, 1, 0),
+         "swapLineDown", val("2\n1\n3"), hasSel(1, 1, 2, 0),
+         "swapLineUp", val("1\n2\n3"), hasSel(0, 1, 1, 0),
+         "swapLineUp", val("1\n2\n3"), hasSel(0, 0, 0, 0));
+
   stTest("swapLineUpFromEnd", "a\nb\nc",
          Pos(2, 1), "swapLineUp",
          hasSel(1, 1, 1, 1), val("a\nc\nb"));
@@ -286,4 +292,12 @@
          Pos(0, 1), "swapWithSublimeMark", at(1, 1), "swapWithSublimeMark", at(0, 1),
          "deleteToSublimeMark", val("aef\nghi"),
          "sublimeYank", val("abc\ndef\nghi"), at(1, 1));
+
+  stTest("findUnder", "foo foobar  a",
+         "findUnder", hasSel(0, 4, 0, 7),
+         "findUnder", hasSel(0, 0, 0, 3),
+         "findUnderPrevious", hasSel(0, 4, 0, 7),
+         "findUnderPrevious", hasSel(0, 0, 0, 3),
+         Pos(0, 4), "findUnder", hasSel(0, 4, 0, 10),
+         Pos(0, 11), "findUnder", hasSel(0, 11, 0, 11));
 })();

@@ -21,12 +21,12 @@
 </style>
 
 <div id=nav>
-  <a href="http://codemirror.net"><img id=logo src="doc/logo.png"></a>
+  <a href="http://codemirror.net"><h1>CodeMirror</h1><img id=logo src="doc/logo.png"></a>
 
   <ul>
     <li><a class=active data-default="true" href="#description">Home</a>
     <li><a href="doc/manual.html">Manual</a>
-    <li><a href="https://github.com/marijnh/codemirror">Code</a>
+    <li><a href="https://github.com/codemirror/codemirror">Code</a>
   </ul>
   <ul>
     <li><a href="#features">Features</a>
@@ -40,7 +40,7 @@
 <section id=description class=first>
   <p><strong>CodeMirror</strong> is a versatile text editor
   implemented in JavaScript for the browser. It is specialized for
-  editing code, and comes with a number of language modes and addons
+  editing code, and comes with a number of <a href="mode/index.html">language modes</a> and <a href="doc/manual.html#addons">addons</a>
   that implement more advanced editing functionality.</p>
 
   <p>A rich <a href="doc/manual.html#api">programming API</a> and a
@@ -57,7 +57,7 @@
 <script src="lib/codemirror.js"></script>
 <script>
   var editor = CodeMirror.fromTextArea(myTextarea, {
-    mode: "text/html"
+    lineNumbers: true
   });
 </script></textarea>
   <select id="demolist" onchange="document.location = this.options[this.selectedIndex].value;">
@@ -85,22 +85,27 @@
   </script>
   <div style="position: relative; margin: 1em 0;">
     <a class="bigbutton left" href="http://codemirror.net/codemirror.zip">DOWNLOAD LATEST RELEASE</a>
-    <div><strong>version 4.0</strong> (<a href="doc/releases.html">Release notes</a>)</div>
+    <div><strong>version 4.8</strong> (<a href="doc/releases.html">Release notes</a>)</div>
     <div>or use the <a href="doc/compress.html">minification helper</a></div>
     <div style="position: absolute; top: 0; right: 0; text-align: right">
       <span class="bigbutton right" onclick="document.getElementById('paypal').submit();">DONATE WITH PAYPAL</span>
       <div style="position: relative">
         or <span onclick="document.getElementById('bankinfo').style.display = 'block';" class=quasilink>Bank</span>,
+        <span onclick="document.getElementById('bcinfo').style.display = 'block';" class=quasilink>Bitcoin</span>,
         <a href="https://www.gittip.com/marijnh">Gittip</a>,
         <a href="https://flattr.com/profile/marijnh">Flattr</a><br>
-        <div id=bankinfo>
-          <span id=bankinfo_close onclick="document.getElementById('bankinfo').style.display = '';">×</span>
+        <div id=bankinfo class=bankinfo>
+          <span class=bankinfo_close onclick="document.getElementById('bankinfo').style.display = '';">×</span>
           Bank: <i>Rabobank</i><br/>
           Country: <i>Netherlands</i><br/>
           SWIFT: <i>RABONL2U</i><br/>
           Account: <i>147850770</i><br/>
           Name: <i>Marijn Haverbeke</i><br/>
           IBAN: <i>NL26 RABO 0147 8507 70</i>
+        </div>
+        <div id=bcinfo class=bankinfo>
+          <span class=bankinfo_close onclick="document.getElementById('bcinfo').style.display = '';">×</span>
+          Bitcoin address: 1HVnnU8E9yLPeFyNgNtUPB5deXBvUmZ6Nx
         </div>
         <form action="https://www.paypal.com/cgi-bin/webscr" method="post" id="paypal">
           <input type="hidden" name="cmd" value="_s-xclick"/>
@@ -151,7 +156,7 @@
   and <a href="doc/realworld.html">many other projects</a>.</p>
 
   <p>Development and bug tracking happens
-  on <a href="https://github.com/marijnh/CodeMirror/">github</a>
+  on <a href="https://github.com/codemirror/CodeMirror/">github</a>
   (<a href="http://marijnhaverbeke.nl/git/codemirror">alternate git
   repository</a>).
   Please <a href="http://codemirror.net/doc/reporting.html">read these
@@ -160,7 +165,7 @@
   license that CodeMirror uses.</p>
 
   <p>Discussion around the project is done on
-  a <a href="http://groups.google.com/group/codemirror">mailing list</a>.
+  a <a href="http://discuss.codemirror.net">discussion forum</a>.
   There is also
   the <a href="http://groups.google.com/group/codemirror-announce">codemirror-announce</a>
   list, which is only used for major announcements (such as new
@@ -170,7 +175,7 @@
 
   <p>A list of CodeMirror-related software that is not part of the
   main distribution is maintained
-  on <a href="https://github.com/marijnh/CodeMirror/wiki/CodeMirror-addons">our
+  on <a href="https://github.com/codemirror/CodeMirror/wiki/CodeMirror-addons">our
   wiki</a>. Feel free to add your project.</p>
 </section>
 
@@ -180,7 +185,7 @@
   in <em>standards mode</em> (HTML5 <code>&lt;!doctype html></code>
   recommended) are supported:</p>
   <table style="margin-bottom: 1em">
-    <tr><th>Firefox</th><td>version 3 and up</td></tr>
+    <tr><th>Firefox</th><td>version 4 and up</td></tr>
     <tr><th>Chrome</th><td>any version</td></tr>
     <tr><th>Safari</th><td>version 5.2 and up</td></tr>
     <tr><th style="padding-right: 1em;">Internet Explorer</th><td>version 8 and up</td></tr>

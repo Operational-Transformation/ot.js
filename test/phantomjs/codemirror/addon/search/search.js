@@ -1,3 +1,6 @@
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 // Define search commands. Depends on dialog.js or another
 // implementation of the openDialog method.
 
@@ -16,21 +19,21 @@
 })(function(CodeMirror) {
   "use strict";
   function searchOverlay(query, caseInsensitive) {
-    var startChar;
-    if (typeof query == "string") {
-      startChar = query.charAt(0);
-      query = new RegExp("^" + query.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"),
-                         caseInsensitive ? "i" : "");
-    } else {
-      query = new RegExp("^(?:" + query.source + ")", query.ignoreCase ? "i" : "");
-    }
+    if (typeof query == "string")
+      query = new RegExp(query.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&"), caseInsensitive ? "gi" : "g");
+    else if (!query.global)
+      query = new RegExp(query.source, query.ignoreCase ? "gi" : "g");
+
     return {token: function(stream) {
-      if (stream.match(query)) return "searching";
-      while (!stream.eol()) {
-        stream.next();
-        if (startChar && !caseInsensitive)
-          stream.skipTo(startChar) || stream.skipToEnd();
-        if (stream.match(query, false)) break;
+      query.lastIndex = stream.pos;
+      var match = query.exec(stream.string);
+      if (match && match.index == stream.pos) {
+        stream.pos += match[0].length;
+        return "searching";
+      } else if (match) {
+        stream.pos = match.index;
+      } else {
+        stream.skipToEnd();
       }
     }};
   }
@@ -68,7 +71,7 @@
     return query;
   }
   var queryDialog =
-    'Search: <input type="text" style="width: 10em"/> <span style="color: #888">(Use /re/ syntax for regexp search)</span>';
+    'Search: <input type="text" style="width: 10em" class="CodeMirror-search-field"/> <span style="color: #888" class="CodeMirror-search-hint">(Use /re/ syntax for regexp search)</span>';
   function doSearch(cm, rev) {
     var state = getSearchState(cm);
     if (state.query) return findNext(cm, rev);
@@ -103,10 +106,11 @@
   });}
 
   var replaceQueryDialog =
-    'Replace: <input type="text" style="width: 10em"/> <span style="color: #888">(Use /re/ syntax for regexp search)</span>';
-  var replacementQueryDialog = 'With: <input type="text" style="width: 10em"/>';
+    'Replace: <input type="text" style="width: 10em" class="CodeMirror-search-field"/> <span style="color: #888" class="CodeMirror-search-hint">(Use /re/ syntax for regexp search)</span>';
+  var replacementQueryDialog = 'With: <input type="text" style="width: 10em" class="CodeMirror-search-field"/>';
   var doReplaceConfirm = "Replace? <button>Yes</button> <button>No</button> <button>Stop</button>";
   function replace(cm, all) {
+    if (cm.getOption("readOnly")) return;
     dialog(cm, replaceQueryDialog, "Replace:", cm.getSelection(), function(query) {
       if (!query) return;
       query = parseQuery(query);

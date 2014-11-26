@@ -1,3 +1,6 @@
+// CodeMirror, copyright (c) by Marijn Haverbeke and others
+// Distributed under an MIT license: http://codemirror.net/LICENSE
+
 (function(mod) {
   if (typeof exports == "object" && typeof module == "object") // CommonJS
     mod(require("../../lib/codemirror"));
@@ -90,7 +93,7 @@
                   "if in instanceof isnt new no not null of off on or return switch then throw true try typeof until void while with yes").split(" ");
 
   function getCompletions(token, context, keywords, options) {
-    var found = [], start = token.string;
+    var found = [], start = token.string, global = options && options.globalScope || window;
     function maybeAdd(str) {
       if (str.lastIndexOf(start, 0) == 0 && !arrayContains(found, str)) found.push(str);
     }
@@ -108,27 +111,29 @@
       if (obj.type && obj.type.indexOf("variable") === 0) {
         if (options && options.additionalContext)
           base = options.additionalContext[obj.string];
-        base = base || window[obj.string];
+        if (!options || options.useGlobalScope !== false)
+          base = base || global[obj.string];
       } else if (obj.type == "string") {
         base = "";
       } else if (obj.type == "atom") {
         base = 1;
       } else if (obj.type == "function") {
-        if (window.jQuery != null && (obj.string == '$' || obj.string == 'jQuery') &&
-            (typeof window.jQuery == 'function'))
-          base = window.jQuery();
-        else if (window._ != null && (obj.string == '_') && (typeof window._ == 'function'))
-          base = window._();
+        if (global.jQuery != null && (obj.string == '$' || obj.string == 'jQuery') &&
+            (typeof global.jQuery == 'function'))
+          base = global.jQuery();
+        else if (global._ != null && (obj.string == '_') && (typeof global._ == 'function'))
+          base = global._();
       }
       while (base != null && context.length)
         base = base[context.pop().string];
       if (base != null) gatherCompletions(base);
     } else {
-      // If not, just look in the window object and any local scope
+      // If not, just look in the global object and any local scope
       // (reading into JS mode internals to get at the local and global variables)
       for (var v = token.state.localVars; v; v = v.next) maybeAdd(v.name);
       for (var v = token.state.globalVars; v; v = v.next) maybeAdd(v.name);
-      gatherCompletions(window);
+      if (!options || options.useGlobalScope !== false)
+        gatherCompletions(global);
       forEach(keywords, maybeAdd);
     }
     return found;
