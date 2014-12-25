@@ -1,7 +1,7 @@
-* Documentation: http://operational-transformation.github.com/
+* Documentation: http://operational-transformation.github.io/
 * Compatibility: Requires CodeMirror >= 4.0
-* Live demo: http://ot.substance.io/demo/
-* Visualization: http://ot.substance.io/visualization/
+* Live demo: http://ot-demo.timbaumann.info/
+* Visualization: http://operational-transformation.github.io/visualization.html
 * License: [MIT license](https://github.com/Operational-Transformation/ot.js/blob/master/LICENSE)
 * Report bugs at https://github.com/Operational-Transformation/ot.js/issues or write a mail to [tim@timbaumann.info](mailto:tim@timbaumann.info)
 * Travis CI: [![Build Status][travis-image]][travis-url]
