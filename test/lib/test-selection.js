@@ -1,3 +1,5 @@
+(function () {
+
 var Selection = require('../../lib/selection');
 var Range = Selection.Range;
 var TextOperation = require('../../lib/text-operation');
@@ -41,3 +43,5 @@ exports.testCompose = function (test) {
   test.strictEqual(a.compose(b), b);
   test.done();
 };
+
+})();
