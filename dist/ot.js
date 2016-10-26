@@ -1,9 +1,9 @@
 /*
  *    /\
- *   /  \ ot 0.0.14
+ *   /  \ ot 0.0.15
  *  /    \ http://operational-transformation.github.com
  *  \    /
- *   \  / (c) 2012-2014 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
+ *   \  / (c) 2012-2016 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
  *    \/ ot may be freely distributed under the MIT license.
  */
 
@@ -1352,7 +1352,9 @@ ot.CodeMirrorAdapter = (function (global) {
   };
 
   CodeMirrorAdapter.prototype.applyOperation = function (operation) {
-    this.ignoreNextChange = true;
+    // if (!operation.isNoop()) {
+      this.ignoreNextChange = true;
+    // }
     CodeMirrorAdapter.applyOperationToCodeMirror(operation, this.cm);
   };
 

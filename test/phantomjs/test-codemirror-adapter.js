@@ -193,6 +193,24 @@
     ok(cmAdapter.getValue() === "nanananu");
   });
 
+  asyncTest("applyOperation should not ignore the next change if this change is a noop", function () {
+    var doc = "nanana";
+    var cm = CodeMirror(document.body, { value: doc });
+    var cmAdapter = new CodeMirrorAdapter(cm);
+    cmAdapter.registerCallbacks({
+      change: function () {
+        ok(true, "change function should be called!");
+        start();
+      }
+    });
+    // Apply noop
+    cmAdapter.applyOperation(new TextOperation().retain(5));
+    // Apply an actual change
+    CodeMirrorAdapter.applyOperationToCodeMirror(new TextOperation().retain(6).insert("nu"), cm);
+    ok(cm.getValue() === cmAdapter.getValue());
+    ok(cmAdapter.getValue() === "nanananu");
+  });
+
   test("getValue", function () {
     var doc = "guten tag";
     var cm = CodeMirror(document.body, { value: doc });
