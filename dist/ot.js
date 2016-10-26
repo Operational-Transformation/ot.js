@@ -1352,9 +1352,9 @@ ot.CodeMirrorAdapter = (function (global) {
   };
 
   CodeMirrorAdapter.prototype.applyOperation = function (operation) {
-    // if (!operation.isNoop()) {
+    if (!operation.isNoop()) {
       this.ignoreNextChange = true;
-    // }
+    }
     CodeMirrorAdapter.applyOperationToCodeMirror(operation, this.cm);
   };
 
