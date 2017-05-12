@@ -1,6 +1,6 @@
 /*
  *    /\
- *   /  \ ot 0.0.15
+ *   /  \ ot 0.0.16
  *  /    \ http://operational-transformation.github.com
  *  \    /
  *   \  / (c) 2012-2017 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
@@ -1310,12 +1310,12 @@ ot.CodeMirrorAdapter = (function (global) {
         if (TextOperation.isRetain(op)) {
           index += op;
         } else if (TextOperation.isInsert(op)) {
-          cm.replaceRange(op, cm.posFromIndex(index));
+          cm.replaceRange(op, cm.posFromIndex(index), null, 'ignoreHistory');
           index += op.length;
         } else if (TextOperation.isDelete(op)) {
           var from = cm.posFromIndex(index);
           var to   = cm.posFromIndex(index - op);
-          cm.replaceRange('', from, to);
+          cm.replaceRange('', from, to, 'ignoreHistory');
         }
       }
     });
@@ -1379,7 +1379,7 @@ ot.CodeMirrorAdapter = (function (global) {
 
   CodeMirrorAdapter.prototype.setSelection = function (selection) {
     var ranges = [];
-    for (var i = 0; i < selection.ranges.length; i++) {
+    for (var i = 0; selection && i < selection.ranges.length; i++) {
       var range = selection.ranges[i];
       ranges[i] = {
         anchor: this.cm.posFromIndex(range.anchor),
@@ -1407,7 +1407,8 @@ ot.CodeMirrorAdapter = (function (global) {
     var cursorCoords = this.cm.cursorCoords(cursorPos);
     var cursorEl = document.createElement('span');
     cursorEl.className = 'other-client';
-    cursorEl.style.display = 'inline-block';
+    cursorEl.style.display = 'none';
+    /*
     cursorEl.style.padding = '0';
     cursorEl.style.marginLeft = cursorEl.style.marginRight = '-1px';
     cursorEl.style.borderLeftWidth = '2px';
@@ -1415,6 +1416,7 @@ ot.CodeMirrorAdapter = (function (global) {
     cursorEl.style.borderLeftColor = color;
     cursorEl.style.height = (cursorCoords.bottom - cursorCoords.top) * 0.9 + 'px';
     cursorEl.style.zIndex = 0;
+    */
     cursorEl.setAttribute('data-clientid', clientId);
     return this.cm.setBookmark(cursorPos, { widget: cursorEl, insertLeft: true });
   };
@@ -1423,7 +1425,8 @@ ot.CodeMirrorAdapter = (function (global) {
     var match = /^#([0-9a-fA-F]{6})$/.exec(color);
     if (!match) { throw new Error("only six-digit hex colors are allowed."); }
     var selectionClassName = 'selection-' + match[1];
-    var rule = '.' + selectionClassName + ' { background: ' + color + '; }';
+    var rgbcolor = hex2rgb(color);
+    var rule = '.' + selectionClassName + ' { background: rgba(' + rgbcolor.red + ',' + rgbcolor.green + ',' + rgbcolor.blue + ',0.2); }';
     addStyleRule(rule);
 
     var anchorPos = this.cm.posFromIndex(range.anchor);
@@ -1441,7 +1444,7 @@ ot.CodeMirrorAdapter = (function (global) {
     for (var i = 0; i < selection.ranges.length; i++) {
       var range = selection.ranges[i];
       if (range.isEmpty()) {
-        selectionObjects[i] = this.setOtherCursor(range.head, color, clientId);
+        //selectionObjects[i] = this.setOtherCursor(range.head, color, clientId);
       } else {
         selectionObjects[i] = this.setOtherSelectionRange(range, color, clientId);
       }
@@ -1449,7 +1452,7 @@ ot.CodeMirrorAdapter = (function (global) {
     return {
       clear: function () {
         for (var i = 0; i < selectionObjects.length; i++) {
-          selectionObjects[i].clear();
+          if (selectionObjects[i]) { selectionObjects[i].clear(); }
         }
       }
     };
@@ -1462,7 +1465,9 @@ ot.CodeMirrorAdapter = (function (global) {
   };
 
   CodeMirrorAdapter.prototype.applyOperation = function (operation) {
-    this.ignoreNextChange = true;
+    if (!operation.isNoop()) {
+      this.ignoreNextChange = true;
+    }
     CodeMirrorAdapter.applyOperationToCodeMirror(operation, this.cm);
   };
 
@@ -1491,6 +1496,22 @@ ot.CodeMirrorAdapter = (function (global) {
     };
   }
 
+  function hex2rgb(hex) {
+    if (hex[0] === "#") { hex = hex.substr(1); }
+    if (hex.length === 3) {
+      var temp = hex;
+      hex = '';
+      temp = /^([a-f0-9])([a-f0-9])([a-f0-9])$/i.exec(temp).slice(1);
+      for (var i = 0; i < 3; i++) { hex += temp[i] + temp[i]; }
+    }
+    var triplets = /^([a-f0-9]{2})([a-f0-9]{2})([a-f0-9]{2})$/i.exec(hex).slice(1);
+    return {
+      red: parseInt(triplets[0], 16),
+      green: parseInt(triplets[1], 16),
+      blue: parseInt(triplets[2], 16)
+    };
+  }
+
   return CodeMirrorAdapter;
 
 }(this));
@@ -1510,6 +1531,9 @@ ot.SocketIOAdapter = (function () {
       })
       .on('set_name', function (clientId, name) {
         self.trigger('set_name', clientId, name);
+      })
+      .on('set_color', function (clientId, color) {
+        self.trigger('set_color', clientId, color);
       })
       .on('ack', function (revision) {
         self.trigger('ack', revision);
@@ -1698,8 +1722,8 @@ ot.EditorClient = (function () {
 
   SelfMeta.prototype.transform = function (operation) {
     return new SelfMeta(
-      this.selectionBefore.transform(operation),
-      this.selectionAfter.transform(operation)
+      (this.selectionBefore ? this.selectionBefore.transform(operation) : null),
+      (this.selectionAfter ? this.selectionAfter.transform(operation) : null)
     );
   };
 
@@ -1724,19 +1748,24 @@ ot.EditorClient = (function () {
   };
 
 
-  function OtherClient (id, listEl, editorAdapter, name, selection) {
+  function OtherClient (id, listEl, editorAdapter, name, color, selection) {
     this.id = id;
     this.listEl = listEl;
     this.editorAdapter = editorAdapter;
     this.name = name;
+    this.color = color;
 
     this.li = document.createElement('li');
     if (name) {
       this.li.textContent = name;
       this.listEl.appendChild(this.li);
     }
-
-    this.setColor(name ? hueFromName(name) : Math.random());
+    
+    if(!color) {
+      this.setColor(name ? hueFromName(name) : Math.random());
+    } else {
+      this.setForceColor(color);
+    }
     if (selection) { this.updateSelection(selection); }
   }
 
@@ -1744,6 +1773,13 @@ ot.EditorClient = (function () {
     this.hue = hue;
     this.color = hsl2hex(hue, 0.75, 0.5);
     this.lightColor = hsl2hex(hue, 0.5, 0.9);
+    if (this.li) { this.li.style.color = this.color; }
+  };
+    
+  OtherClient.prototype.setForceColor = function (color) {
+    this.hue = null;
+    this.color = color;
+    this.lightColor = color;
     if (this.li) { this.li.style.color = this.color; }
   };
 
@@ -1804,6 +1840,7 @@ ot.EditorClient = (function () {
     this.serverAdapter.registerCallbacks({
       client_left: function (clientId) { self.onClientLeft(clientId); },
       set_name: function (clientId, name) { self.getClientObject(clientId).setName(name); },
+      set_color: function (clientId, color) { self.getClientObject(clientId).setForceColor(color); },
       ack: function (revision) { self.serverAck(revision); },
       operation: function (revision, operation) {
         self.applyServer(revision, TextOperation.fromJSON(operation));
@@ -1859,6 +1896,7 @@ ot.EditorClient = (function () {
       this.clientListEl,
       this.editorAdapter,
       clientObj.name || clientId,
+      clientObj.color || null,
       clientObj.selection ? Selection.fromJSON(clientObj.selection) : null
     );
   };
