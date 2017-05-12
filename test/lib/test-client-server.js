@@ -68,7 +68,7 @@ exports.testClientServerInteraction = h.randomTest(50, function (test) {
   function serverReceive (msg) {
     userId = msg.userId;
     var operationP = server.receiveOperation(msg.revision, msg.operation);
-    var broadcast = { userId: userId, operation: operationP };
+    var broadcast = { userId: userId, revision: server.operations.length, operation: operationP };
     client1ReceiveChannel.write(broadcast);
     client2ReceiveChannel.write(broadcast);
   }
@@ -76,9 +76,9 @@ exports.testClientServerInteraction = h.randomTest(50, function (test) {
   function clientReceive (client) {
     return function (obj) {
       if (obj.userId === client.userId) {
-        client.serverAck();
+        client.serverAck(obj.revision);
       } else {
-        client.applyServer(obj.operation);
+        client.applyServer(obj.revision, obj.operation);
       }
     };
   }

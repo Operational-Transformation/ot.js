@@ -2,3 +2,4 @@
 /node_modules
 /docs/_build
 .DS_Store
+*.swp
