@@ -233,13 +233,11 @@
     var selection1 = new Selection([new Range(3,3), new Range(9,16)]);
     var handle1 = cmAdapter.setOtherSelection(selection1, '#ff0000', 'tim');
     deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [
-      new CodeMirror.Pos(0, 3),
       { from: new CodeMirror.Pos(0, 9), to: new CodeMirror.Pos(1, 5) }
     ], "the codemirror instance should contain the other user's selection as marks");
     var selection2 = new Selection([new Range(4,6)]);
     var handle2 = cmAdapter.setOtherSelection(selection2, '#0000ff', 'tim');
     deepEqual(cm.getAllMarks().map(function (x) { return x.find(); }), [
-      new CodeMirror.Pos(0, 3),
       { from: new CodeMirror.Pos(0, 9), to: new CodeMirror.Pos(1, 5) },
       { from: new CodeMirror.Pos(0, 4), to: new CodeMirror.Pos(0, 6) }
     ], "the codemirror instance should contain the other users' selection as marks");
