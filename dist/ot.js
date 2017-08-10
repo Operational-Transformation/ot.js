@@ -1921,7 +1921,6 @@ ot.EditorClient = (function () {
   };
 
   EditorClient.prototype.onClientLeft = function (clientId) {
-    console.log("User disconnected: " + clientId);
     var client = this.clients[clientId];
     if (!client) { return; }
     client.remove();
