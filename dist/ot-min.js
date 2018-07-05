@@ -1,9 +1,9 @@
 /*
  *    /\
- *   /  \ ot 0.0.17
+ *   /  \ ot 0.0.18
  *  /    \ http://operational-transformation.github.com
  *  \    /
- *   \  / (c) 2012-2017 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)
+ *   \  / (c) 2012-2018 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info), Max Wu <jackymaxj@gmail.com>
  *    \/ ot may be freely distributed under the MIT license.
  */
 

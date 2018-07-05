@@ -4,8 +4,8 @@
   "keywords": [
     "operational transformation"
   ],
-  "version": "0.0.17",
-  "author": "Tim Baumann <tim@timbaumann.info> (http://timbaumann.info)",
+  "version": "0.0.18",
+  "author": "Tim Baumann <tim@timbaumann.info> (http://timbaumann.info), Max Wu <jackymaxj@gmail.com>",
   "homepage": "http://operational-transformation.github.com",
   "repository": {
     "type": "git",
