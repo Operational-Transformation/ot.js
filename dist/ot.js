@@ -1,6 +1,6 @@
 /*
  *    /\
- *   /  \ ot 0.0.19
+ *   /  \ ot 0.0.20
  *  /    \ http://operational-transformation.github.com
  *  \    /
  *   \  / (c) 2012-2020 Tim Baumann <tim@timbaumann.info> (http://timbaumann.info), Max Wu <jackymaxj@gmail.com>
