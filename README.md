@@ -1,9 +1,12 @@
+# Maintainer wanted
+
+This project has been bit rotting for long enough. If you want to help me dust it off by taking over as maintainer, please get in touch at [tim@timbaumann.info](mailto:tim@timbaumann.info).
+
 * Documentation: http://operational-transformation.github.io/
 * Compatibility: Requires CodeMirror >= 4.0
-* Live demo: http://ot-demo.timbaumann.info/
 * Visualization: http://operational-transformation.github.io/visualization.html
 * License: [MIT license](https://github.com/Operational-Transformation/ot.js/blob/master/LICENSE)
-* Report bugs at https://github.com/Operational-Transformation/ot.js/issues or write a mail to [tim@timbaumann.info](mailto:tim@timbaumann.info)
+* Report bugs at https://github.com/Operational-Transformation/ot.js/issues
 * Travis CI: [![Build Status][travis-image]][travis-url]
 * NPM: [![NPM][npm-image]][npm-url]
 
