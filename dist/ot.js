@@ -1827,7 +1827,8 @@ ot.EditorClient = (function () {
     Client.call(this, revision);
     this.serverAdapter = serverAdapter;
     this.editorAdapter = editorAdapter;
-    this.undoManager = new UndoManager();
+    this.undoManager = new UndoManager(200);
+    this.time = Date.now();
 
     this.initializeClientList();
     this.initializeClients(clients);
@@ -1962,10 +1963,13 @@ ot.EditorClient = (function () {
     var meta = new SelfMeta(selectionBefore, this.selection);
     var operation = new WrappedOperation(textOperation, meta);
 
+    var currentTime = Date.now();
     var compose = this.undoManager.undoStack.length > 0 &&
-      inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped);
+      inverse.shouldBeComposedWithInverted(last(this.undoManager.undoStack).wrapped) &&
+      (currentTime - this.time) < 1250;
     var inverseMeta = new SelfMeta(this.selection, selectionBefore);
     this.undoManager.add(new WrappedOperation(inverse, inverseMeta), compose);
+    this.time = currentTime;
     this.applyClient(textOperation);
   };
 
