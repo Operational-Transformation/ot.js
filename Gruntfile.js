@@ -24,6 +24,18 @@ module.exports = function (grunt) {
     qunit: {
       files: ['test/phantomjs/test.html']
     },
+    copy: {
+      adapters: {
+        files: [
+          {
+            cwd: 'lib',
+            src: ['codemirror-adapter.js', 'aceeditor-adapter.js'],
+            dest: 'dist',
+            expand: true,
+          }
+        ]
+      }
+    },
     concat: {
       options: {
         banner: '<%= banner %>'
@@ -35,7 +47,6 @@ module.exports = function (grunt) {
           'lib/wrapped-operation.js',
           'lib/undo-manager.js',
           'lib/client.js',
-          'lib/codemirror-adapter.js',
           'lib/socketio-adapter.js',
           'lib/ajax-adapter.js',
           'lib/editor-client.js'
@@ -47,9 +58,16 @@ module.exports = function (grunt) {
       options: {
         banner: '<%= banner %>'
       },
-      dist: {
-        src: ['<%= concat.dist.dest %>'],
-        dest: 'dist/ot-min.js'
+      all: {
+        files: [
+          {
+            expand: true,
+            cwd: 'dist/',
+            src: ['**.js'],
+            dest: 'dist/',
+            ext: '.min.js',
+          }
+        ]
       }
     },
     watch: {
@@ -71,7 +89,8 @@ module.exports = function (grunt) {
         eqnull: true,
         node: true,
         browser: true,
-        strict: false
+        strict: false,
+        multistr: true,
       }
     }
   });
@@ -80,11 +99,12 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-nodeunit');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-contrib-copy');
   grunt.loadNpmTasks('grunt-contrib-uglify');
   grunt.loadNpmTasks('grunt-contrib-concat');
   grunt.loadNpmTasks('grunt-contrib-connect');
 
   // Default task.
-  grunt.registerTask('default', ['jshint', 'nodeunit', 'concat', 'uglify', 'qunit']);
+  grunt.registerTask('default', ['jshint', 'nodeunit', 'copy', 'concat', 'uglify', 'qunit']);
 
 };

@@ -15,17 +15,17 @@
     "url": "https://github.com/operational-transformation/ot.js/issues"
   },
   "main": "./lib/index.js",
-  "dependencies": {},
   "devDependencies": {
-    "socket.io": "1.2.1",
     "grunt": "*",
-    "grunt-contrib-jshint": "*",
-    "grunt-contrib-qunit": "*",
-    "grunt-contrib-nodeunit": "*",
-    "grunt-contrib-watch": "*",
-    "grunt-contrib-uglify": "*",
     "grunt-contrib-concat": "*",
-    "grunt-contrib-connect": "*"
+    "grunt-contrib-connect": "*",
+    "grunt-contrib-copy": "^1.0.0",
+    "grunt-contrib-jshint": "*",
+    "grunt-contrib-nodeunit": "*",
+    "grunt-contrib-qunit": "*",
+    "grunt-contrib-uglify": "*",
+    "grunt-contrib-watch": "*",
+    "socket.io": "1.2.1"
   },
   "scripts": {
     "test": "grunt jshint nodeunit qunit"
